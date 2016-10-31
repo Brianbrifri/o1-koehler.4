@@ -1,5 +1,6 @@
 #ifndef STRUCT_H
 #define STRUCT_H
+#include <sys/types.h>
 #define RED "\x1b[31m"
 #define GREEN "\x1b[32m"
 #define YLW "\x1b[33m"
@@ -11,11 +12,23 @@ static const long long NANO_MODIFIER = 1000000000;
 typedef struct sharedStruct {
   long long ossTimer;
   int sigNotReceived;
+  pid_t scheduledProcess;
+  long long scheduledTime;
 } sharedStruct;
 
 typedef struct msgbuf {
   long mType;
   char mText[80];
 } msgbuf;
+
+typedef struct PCB {
+  pid_t processID;
+  long long totalScheduledTime;
+  long long quantumScheduled;
+  long long timeRan;
+  long long lastBurst;
+  int priority;
+  int ioInterrupt;
+}PCB;
 
 #endif

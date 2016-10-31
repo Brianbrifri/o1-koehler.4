@@ -10,7 +10,7 @@ oss: $(masterObjects)
 slaverunner: $(slaveObjects)
 	gcc -g -o slaverunner slave.o
 
-master.o: struct.h
+master.o: struct.h master.h
 	gcc -g -c master.c
 
 slave.o: struct.h
