@@ -23,7 +23,6 @@ typedef struct msgbuf {
 } msgbuf;
 
 typedef struct PCB {
-  int shmid;
   pid_t processID;
   long long totalScheduledTime;
   long long quantumScheduled;
@@ -31,6 +30,6 @@ typedef struct PCB {
   long long lastBurst;
   int priority;
   bool ioInterrupt;
-}PCB;
+} PCB;
 
 #endif

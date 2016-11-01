@@ -19,6 +19,11 @@
 
 
 void spawnSlave(void);
+bool isTimeToSpawn(void);
+void setTimeToSpawn(void);
+int incrementTimer(void);
+int scheduleProcessTime(void);
+pid_t scheduleNextProcess(void);
 void interruptHandler(int);
 void cleanup(void);
 void sendMessage(int, int);
@@ -81,7 +86,8 @@ int pcbShmid;
 int slaveQueueId;
 int masterQueueId;
 int nextProcessToSend = 1;
-int processNumberBeingSpawned = 1;
+int processNumberBeingSpawned = -1;
+long long timeToSpawn = 0;
 int messageReceived = 0;
 //long long *ossTimer = 0;
 

@@ -2,6 +2,7 @@
 
 int main (int argc, char **argv)
 {
+  srand(time(0));
   mArg = malloc(20);
   nArg = malloc(20);
   pArg = malloc(20);
@@ -138,25 +139,27 @@ int main (int argc, char **argv)
   }
 
   myStruct->ossTimer = 0;
-  myStruct->scheduledProcess = 0;
+  myStruct->scheduledProcess = -1;
   myStruct->sigNotReceived = 1;
+
+  createQueues();
 
   fprintf(file,"***** BEGIN LOG *****\n");
 
-  //Spawn the inital value of slaves
-  spawnSlave();
-  spawnSlave();
+  do {
 
-  //Send a message telling the next process to go into the CS
-  //sendMessage(slaveQueueId, 2);
+    if(isTimeToSpawn()) {
+      spawnSlave();
+      setTimeToSpawn();
+    }
 
-  //While the number of messages received are less than the total number
-  //of slaves are supposed to send back messages
-  //while(messageReceived < TOTAL_SLAVES && myStruct->ossTimer < 2000000000 && myStruct->sigNotReceived) {
-  //  myStruct->ossTimer = myStruct->ossTimer + INCREMENTER;
-//    *ossTimer = *ossTimer + INCREMENTER;
-  //  processDeath(masterQueueId, 3, file);
-  //}
+    myStruct->scheduledProcess = scheduleNextProcess();
+
+    myStruct->ossTimer += incrementTimer();
+
+    while(myStruct->scheduledProcess != -1); 
+  
+  } while (myStruct->ossTimer < 20000000000 && myStruct->sigNotReceived);
 
   if(!cleanupCalled) {
     cleanupCalled = 1;
@@ -166,8 +169,13 @@ int main (int argc, char **argv)
   return 0;
 }
 
+bool isTimeToSpawn(void) {
+  return timeToSpawn >= myStruct->ossTimer ? true : false;
+}
 
-
+void setTimeToSpawn(void) {
+  timeToSpawn = myStruct->ossTimer + rand() % 2000000000;
+}
 
 void spawnSlave(void) {
 
@@ -177,6 +185,7 @@ void spawnSlave(void) {
       if(pcbArray[i].processID == 0) {
         processNumberBeingSpawned = i;
         pcbArray[i].processID = 1;
+        printf("Got location %d for new process\n", processNumberBeingSpawned);
         break;
       } 
     }
@@ -193,6 +202,7 @@ void spawnSlave(void) {
       if(childPid == 0) {
         printf("get my pid: %d\n", getpid());
         pcbArray[processNumberBeingSpawned].processID = getpid();
+        pcbArray[processNumberBeingSpawned].totalScheduledTime = scheduleProcessTime();
         sprintf(mArg, "%d", shmid);
         sprintf(nArg, "%d", processNumberBeingSpawned);
         sprintf(pArg, "%d", pcbShmid);
@@ -202,6 +212,11 @@ void spawnSlave(void) {
         fprintf(stderr, "    Should only print this in error\n");
       }
       
+    }
+    printf("assignedPCB = %d\n", processNumberBeingSpawned);
+    if(processNumberBeingSpawned != -1) {
+      while(pcbArray[processNumberBeingSpawned].processID <= 1); 
+      Enqueue(pcbArray[processNumberBeingSpawned].processID, QUEUE0);
     }
 
 }
@@ -257,6 +272,7 @@ void cleanup() {
     perror("Failed to destroy shared memory segment");
   }
 
+  clearQueues();
 
   printf("Master about to delete message queues\n");
   //Delete the message queues
@@ -271,6 +287,30 @@ void cleanup() {
   printf("Master about to kill itself\n");
   //Kill this master process
   kill(getpid(), SIGKILL);
+}
+
+int incrementTimer(void) {
+  return rand() % 1001;
+}
+
+int scheduleProcessTime(void) {
+  return rand() % 300000;
+}
+
+pid_t scheduleNextProcess(void) {
+  if(!isEmpty(QUEUE0)) {
+    return pop(QUEUE0);
+  }
+  else if(!isEmpty(QUEUE1)) {
+    return pop(QUEUE1);
+  }
+  else if(!isEmpty(QUEUE2)) {
+    return pop(QUEUE2);
+  }
+  else if(!isEmpty(QUEUE3)) {
+    return pop(QUEUE3);
+  }
+  else return -1;
 }
 
 void sendMessage(int qid, int msgtype) {
@@ -320,6 +360,7 @@ bool isEmpty(int choice) {
 
 //Function to add a process id to a given queue
 void Enqueue(pid_t processId, int choice) {
+  printf("Enqueuing pid %d in queue %d\n", processId, choice);
   switch(choice) {
     case 0:
       if(rear0 == NULL) {

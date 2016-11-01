@@ -84,14 +84,22 @@ int main (int argc, char **argv) {
 
   long long duration = 1 + rand() % 100000;
 
+  pcbArray[processNumber].processID = getpid();
+
+  while(myStruct->scheduledProcess != getpid());
+
   printf("    Slave %d got duration %llu\n", processNumber, duration);
   startTime = myStruct->ossTimer;
   currentTime = myStruct->ossTimer - startTime;
 
+  pcbArray[processNumber].lastBurst = duration;
+
+  myStruct->scheduledProcess = -1;
+
   sendMessage(masterQueueId, 3, myStruct->ossTimer);
 
   if(shmdt(myStruct) == -1) {
-    perror("    Slave could not detach shared memory");
+    perror("    Slave could not detach shared memory struct");
   }
 
   if(shmdt(pcbArray) == -1) {
