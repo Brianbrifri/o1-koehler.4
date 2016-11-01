@@ -42,14 +42,28 @@ struct PCB pcbArray[MAX_QUEUE_SIZE];
 struct queue {
   pid_t id;
   struct queue *next;
-  struct queue *previous;
 
-} queue;
+} *front0, *front1, *front2, *front3,
+  *rear0, *rear1, *rear2, *rear3,
+  *temp0, *temp1, *temp2, *temp3,
+  *frontA0, *frontA1, *frontA2, *frontA3;
 
-bool isEmpty(struct queue);
-void Enqueue(pid_t, struct queue);
-pid_t pop(struct queue);
+int queue0size;
+int queue1size;
+int queue2size;
+int queue3size;
 
+void createQueues(void);
+bool isEmpty(int);
+void Enqueue(pid_t, int);
+pid_t pop(int);
+
+const int QUEUE0 = 0;
+const int QUEUE1 = 1;
+const int QUEUE2 = 2;
+const int QUEUE3 = 3;
+
+//End Queue Stuff//
 char *mArg;
 char *nArg;
 char *tArg;

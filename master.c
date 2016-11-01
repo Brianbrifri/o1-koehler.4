@@ -18,7 +18,7 @@ int main (int argc, char **argv)
   char *short_options = "hs:l:t:";
   int c;
 
-
+  
   //process arguments
   opterr = 0;
   while ((c = getopt_long (argc, argv, short_options, long_options, NULL)) != -1)
@@ -126,23 +126,24 @@ int main (int argc, char **argv)
   }
 
   myStruct->ossTimer = 0;
+  myStruct->scheduledProcess = 0;
   myStruct->sigNotReceived = 1;
 
   fprintf(file,"***** BEGIN LOG *****\n");
 
   //Spawn the inital value of slaves
-  spawnSlaves(sValue);
+  //spawnSlaves(sValue);
 
   //Send a message telling the next process to go into the CS
-  sendMessage(slaveQueueId, 2);
+  //sendMessage(slaveQueueId, 2);
 
   //While the number of messages received are less than the total number
   //of slaves are supposed to send back messages
-  while(messageReceived < TOTAL_SLAVES && myStruct->ossTimer < 2000000000 && myStruct->sigNotReceived) {
-    myStruct->ossTimer = myStruct->ossTimer + INCREMENTER;
+  //while(messageReceived < TOTAL_SLAVES && myStruct->ossTimer < 2000000000 && myStruct->sigNotReceived) {
+  //  myStruct->ossTimer = myStruct->ossTimer + INCREMENTER;
 //    *ossTimer = *ossTimer + INCREMENTER;
-    processDeath(masterQueueId, 3, file);
-  }
+  //  processDeath(masterQueueId, 3, file);
+  //}
 
   if(!cleanupCalled) {
     cleanupCalled = 1;
@@ -285,6 +286,204 @@ void processDeath(int qid, int msgtype, FILE *file) {
   }
 }
 
+void createQueues() {
+  front0 = front1 = front2 = front3 = NULL;
+  rear0 = rear1 = rear2 = rear3 = NULL;
+}
+
+bool isEmpty(int choice) {
+  switch(choice) {
+    case 0:
+      if((front0 == NULL) && (rear0 == NULL))
+        return true;
+      break;
+    case 1:
+      if((front1 == NULL) && (rear1 == NULL))
+        return true;
+      break;
+    case 2:
+      if((front2 == NULL) && (rear2 == NULL))
+        return true;
+      break;
+    case 3:
+      if((front3 == NULL) && (rear3 == NULL))
+        return true;
+      break;
+    default:
+      printf("Not a valid queue choice\n");
+  }
+  return false;
+}
+
+void Enqueue(pid_t processId, int choice) {
+  switch(choice) {
+    case 0:
+      if(rear0 == NULL) {
+        rear0 = (struct queue*)malloc(1 * sizeof(struct queue));
+        rear0->next = NULL;
+        rear0->id = processId;
+        front0 = rear0;
+      }
+      else {
+        temp0 = (struct queue*)malloc(1 * sizeof(struct queue));
+        rear0->next = temp0;
+        temp0->id = processId;
+        temp0->next = NULL;
+
+        rear0 = temp0;
+      }
+      queue0size++;
+      break;
+    case 1:
+      if(rear1 == NULL) {
+        rear1 = (struct queue*)malloc(1 * sizeof(struct queue));
+        rear1->next = NULL;
+        rear1->id = processId;
+        front1 = rear1;
+      }
+      else {
+        temp1 = (struct queue*)malloc(1 * sizeof(struct queue));
+        rear1->next = temp1;
+        temp1->id = processId;
+        temp1->next = NULL;
+
+        rear1 = temp1;
+      }
+      queue1size++;
+      break;
+    case 2:
+      if(rear2 == NULL) {
+        rear2 = (struct queue*)malloc(1 * sizeof(struct queue));
+        rear2->next = NULL;
+        rear2->id = processId;
+        front2 = rear2;
+      }
+      else {
+        temp2 = (struct queue*)malloc(1 * sizeof(struct queue));
+        rear2->next = temp2;
+        temp2->id = processId;
+        temp2->next = NULL;
+
+        rear2 = temp2;
+      }
+      queue2size++;
+      break;
+    case 3:
+      if(rear3 == NULL) {
+        rear3 = (struct queue*)malloc(1 * sizeof(struct queue));
+        rear3->next = NULL;
+        rear3->id = processId;
+        front3 = rear3;
+      }
+      else {
+        temp3 = (struct queue*)malloc(1 * sizeof(struct queue));
+        rear3->next = temp3;
+        temp3->id = processId;
+        temp3->next = NULL;
+
+        rear3 = temp3;
+      }
+      queue3size++;
+      break;
+    default:
+      printf("Not a valid queue choice\n");
+  }
+}
+
+pid_t pop(int choice) {
+  pid_t poppedID;
+  switch(choice) {
+    case 0:
+      frontA0 = front0;
+      if(frontA0 == NULL) {
+        printf("Error: popping an empty queue\n");
+      }
+      else {
+        if(frontA0->next != NULL) {
+          frontA0 = frontA0->next;
+          printf("popped %d\n", front0->id);
+          poppedID = front0->id;
+          free(front0);
+          front0 = frontA0;
+        }
+        else {
+          printf("popped %d\n", front0->id);
+          poppedID = front0->id;
+          free(front0);
+          front0 = NULL;
+          rear0 = NULL;
+        }
+        queue0size--;
+      }
+      break;
+    case 1:
+      frontA1 = front1;
+      if(frontA1 == NULL) {
+        printf("Error: popping an empty queue\n");
+      }
+      else {
+        if(frontA1->next != NULL) {
+          frontA1 = frontA1->next;
+          poppedID = front1->id;
+          free(front1);
+          front1 = frontA1;
+        }
+        else {
+          poppedID = front1->id;
+          free(front1);
+          front1 = NULL;
+          rear1 = NULL;
+        }
+        queue1size--;
+      }
+      break;
+    case 2:
+      frontA2 = front2;
+      if(frontA2 == NULL) {
+        printf("Error: popping an empty queue\n");
+      }
+      else {
+        if(frontA2->next != NULL) {
+          frontA2 = frontA2->next;
+          poppedID = front2->id;
+          free(front2);
+          front2 = frontA2;
+        }
+        else {
+          poppedID = front2->id;
+          free(front2);
+          front2 = NULL;
+          rear2 = NULL;
+        }
+        queue2size--;
+      }
+      break;
+    case 3:
+      frontA3 = front3;
+      if(frontA3 == NULL) {
+        printf("Error: popping an empty queue\n");
+      }
+      else {
+        if(frontA3->next != NULL) {
+          frontA3 = frontA3->next;
+          poppedID = front3->id;
+          free(front3);
+          front3 = frontA3;
+        }
+        else {
+          poppedID = front3->id;
+          free(front3);
+          front3 = NULL;
+          rear3 = NULL;
+        }
+        queue3size--;
+      }
+      break;
+    default:
+      printf("Not a valid queue choice\n");
+  }
+  return poppedID;
+}
 
 //Detach and remove function
 int detachAndRemove(int shmid, sharedStruct *shmaddr) {
