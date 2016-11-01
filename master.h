@@ -18,7 +18,7 @@
 #include "struct.h"
 
 
-void spawnSlaves(int);
+void spawnSlave(void);
 void interruptHandler(int);
 void cleanup(void);
 void sendMessage(int, int);
@@ -64,8 +64,10 @@ const int QUEUE2 = 2;
 const int QUEUE3 = 3;
 
 //End Queue Stuff//
+//Char arrays for arg passing to children//
 char *mArg;
 char *nArg;
+char *pArg;
 char *tArg;
 
 volatile sig_atomic_t cleanupCalled = 0;
@@ -88,6 +90,7 @@ struct sharedStruct *myStruct;
 const int TOTAL_SLAVES = 100;
 const int MAXSLAVE = 20;
 const long long INCREMENTER = 40000;
+const int ARRAY_SIZE = 18;
 FILE *file;
 struct msqid_ds msqid_ds_buf;
 

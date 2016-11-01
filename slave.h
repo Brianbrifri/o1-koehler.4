@@ -28,5 +28,5 @@ int processNumber = 0;
 int masterQueueId;
 const int QUIT_TIMEOUT = 10;
 struct msqid_ds msqid_buf;
-
+struct PCB *pcbArray;
 #endif

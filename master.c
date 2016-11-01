@@ -2,9 +2,10 @@
 
 int main (int argc, char **argv)
 {
-  nArg = malloc(20);
-  tArg = malloc(20);
   mArg = malloc(20);
+  nArg = malloc(20);
+  pArg = malloc(20);
+  tArg = malloc(20);
   int hflag = 0;
   int nonOptArgFlag = 0;
   int index;
@@ -125,6 +126,10 @@ int main (int argc, char **argv)
   }
 
 
+  for (int i = 0; i < ARRAY_SIZE; i++) {
+    pcbArray[i].processID = 0;
+  }
+
   //Open file and mark the beginning of the new log
   file = fopen(filename, "a");
   if(!file) {
@@ -139,7 +144,8 @@ int main (int argc, char **argv)
   fprintf(file,"***** BEGIN LOG *****\n");
 
   //Spawn the inital value of slaves
-  //spawnSlaves(sValue);
+  spawnSlave();
+  spawnSlave();
 
   //Send a message telling the next process to go into the CS
   //sendMessage(slaveQueueId, 2);
@@ -163,32 +169,40 @@ int main (int argc, char **argv)
 
 
 
-void spawnSlaves(int count) {
-  int j;
+void spawnSlave(void) {
 
-  //Fork count # of processes
-  for(j = 0; j < count; j++) {
-    printf("About to spawn process #%d\n", processNumberBeingSpawned);
-
-    //exit on bad fork
-    if((childPid = fork()) < 0) {
-      perror("Fork Failure");
-      //exit(1);
+    processNumberBeingSpawned = -1;
+    
+    for(int i = 0; i < ARRAY_SIZE; i++) {
+      if(pcbArray[i].processID == 0) {
+        processNumberBeingSpawned = i;
+        pcbArray[i].processID = 1;
+        break;
+      } 
     }
 
-    //If good fork, continue to call exec with all the necessary args
-    if(childPid == 0) {
-      childPid = getpid();
-      pid_t gpid = getpgrp();
-      sprintf(mArg, "%d", shmid);
-      sprintf(nArg, "%d", processNumberBeingSpawned);
-      sprintf(tArg, "%d", tValue);
-      char *slaveOptions[] = {"./slaverunner", "-m", mArg, "-n", nArg, "-t", tArg, (char *)0};
-      execv("./slaverunner", slaveOptions);
-      fprintf(stderr, "    Should only print this in error\n");
+    if(processNumberBeingSpawned != -1) {
+      printf("About to spawn process #%d\n", processNumberBeingSpawned);
+      //exit on bad fork
+      if((childPid = fork()) < 0) {
+        perror("Fork Failure");
+        //exit(1);
+      }
+
+      //If good fork, continue to call exec with all the necessary args
+      if(childPid == 0) {
+        printf("get my pid: %d\n", getpid());
+        pcbArray[processNumberBeingSpawned].processID = getpid();
+        sprintf(mArg, "%d", shmid);
+        sprintf(nArg, "%d", processNumberBeingSpawned);
+        sprintf(pArg, "%d", pcbShmid);
+        sprintf(tArg, "%d", tValue);
+        char *slaveOptions[] = {"./slaverunner", "-m", mArg, "-n", nArg, "-p", pArg, "-t", tArg, (char *)0};
+        execv("./slaverunner", slaveOptions);
+        fprintf(stderr, "    Should only print this in error\n");
+      }
+      
     }
-    processNumberBeingSpawned++;
-  }
 
 }
 
@@ -228,6 +242,7 @@ void cleanup() {
   //free up the malloc'd memory for the arguments
   free(mArg);
   free(nArg);
+  free(pArg);
   free(tArg);
   printf("Master waiting on all processes do die\n");
   childPid = wait(&status);

@@ -10,11 +10,12 @@ int main (int argc, char **argv) {
   key_t slaveKey = 120314;
 
   int shmid = 0;
+  int pcbShmid = 0;
 
   char *fileName;
   char *defaultFileName = "test.out";
   char *option = NULL;
-  char *short_options = "l:m:n:t:";
+  char *short_options = "l:m:n:p:t:";
   FILE *file;
   int c;
   myPid = getpid();
@@ -32,11 +33,14 @@ int main (int argc, char **argv) {
       case 'n':
         processNumber = atoi(optarg);
         break;
+      case 'p':
+        pcbShmid = atoi(optarg);
+        break;
       case 't':
         timeoutValue = atoi(optarg) + 2;
         break;
       case '?':
-        fprintf(stderr, "    Arguments were not passed correctly to slave %d. Terminating.", myPid);
+        fprintf(stderr, "    Arguments were not passed correctly to slave %d. Terminating.\n", myPid);
         exit(-1);
     }
 
@@ -45,6 +49,11 @@ int main (int argc, char **argv) {
   //Try to attach to shared memory
   if((myStruct = (sharedStruct *)shmat(shmid, NULL, 0)) == (void *) -1) {
     perror("    Slave could not attach shared mem");
+    exit(1);
+  }
+
+  if((pcbArray = (PCB *)shmat(pcbShmid, NULL, 0)) == (void *) -1) {
+    perror("    Slave could not attach to shared memory array");
     exit(1);
   }
 
@@ -83,6 +92,10 @@ int main (int argc, char **argv) {
 
   if(shmdt(myStruct) == -1) {
     perror("    Slave could not detach shared memory");
+  }
+
+  if(shmdt(pcbArray) == -1) {
+    perror("    Slave could not detach from shared memory array");
   }
 
   printf("    Slave %d exiting\n", processNumber);
