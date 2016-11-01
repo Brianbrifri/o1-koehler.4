@@ -22,8 +22,8 @@ void spawnSlaves(int);
 void interruptHandler(int);
 void cleanup(void);
 void sendMessage(int, int);
-void processDeath(int, int, FILE*);
-int detachAndRemove(int, sharedStruct*);
+int detachAndRemoveTimer(int, sharedStruct*);
+int detachAndRemoveArray(int, PCB*);
 void printHelpMessage(void);
 void printShortHelpMessage(void);
 
@@ -33,9 +33,8 @@ struct option long_options[] = {
   {}
 };
 
-#define MAX_QUEUE_SIZE 18
 //PCB Array//
-struct PCB pcbArray[MAX_QUEUE_SIZE];
+struct PCB *pcbArray;
 
 //Begin queue stuff//
 
@@ -57,6 +56,7 @@ void createQueues(void);
 bool isEmpty(int);
 void Enqueue(pid_t, int);
 pid_t pop(int);
+void clearQueues(void);
 
 const int QUEUE0 = 0;
 const int QUEUE1 = 1;
@@ -72,9 +72,10 @@ volatile sig_atomic_t cleanupCalled = 0;
 
 pid_t myPid, childPid;
 int tValue = 20;
-int sValue = 5;
+int sValue = 3;
 int status;
 int shmid;
+int pcbShmid;
 int slaveQueueId;
 int masterQueueId;
 int nextProcessToSend = 1;
@@ -90,5 +91,7 @@ const long long INCREMENTER = 40000;
 FILE *file;
 struct msqid_ds msqid_ds_buf;
 
-
+key_t timerKey = 148364;
+key_t pcbArrayKey = 135155;
+key_t masterQueueKey = 128464;
 #endif

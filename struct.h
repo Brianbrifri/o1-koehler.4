@@ -1,6 +1,7 @@
 #ifndef STRUCT_H
 #define STRUCT_H
 #include <sys/types.h>
+#include <stdbool.h>
 #define RED "\x1b[31m"
 #define GREEN "\x1b[32m"
 #define YLW "\x1b[33m"
@@ -22,13 +23,14 @@ typedef struct msgbuf {
 } msgbuf;
 
 typedef struct PCB {
+  int shmid;
   pid_t processID;
   long long totalScheduledTime;
   long long quantumScheduled;
   long long timeRan;
   long long lastBurst;
   int priority;
-  int ioInterrupt;
+  bool ioInterrupt;
 }PCB;
 
 #endif

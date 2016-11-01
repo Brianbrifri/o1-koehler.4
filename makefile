@@ -13,7 +13,7 @@ slaverunner: $(slaveObjects)
 master.o: struct.h master.h
 	gcc -g -c master.c
 
-slave.o: struct.h
+slave.o: struct.h slave.h
 	gcc -g -c slave.c
 
 clean:

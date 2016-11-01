@@ -1,35 +1,6 @@
-#include <ctype.h>
-#include <sys/wait.h>
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <getopt.h>
-#include <sys/types.h>
-#include <sys/ipc.h>
-#include <sys/shm.h>
-#include <sys/stat.h>
-#include <sys/msg.h>
-#include <signal.h>
-#include <errno.h>
-#include <time.h>
 
+#include "slave.h"
 #include "struct.h"
-
-void sendMessage(int, int, long long);
-void getMessage(int, int);
-void alarmHandler(int);
-void sigquitHandler(int);
-void zombieKiller(int);
-volatile sig_atomic_t sigNotReceived = 1;
-pid_t myPid;
-long long *ossTimer;
-struct sharedStruct *myStruct;
-int processNumber = 0;
-int slaveQueueId;
-int masterQueueId;
-const int QUIT_TIMEOUT = 10;
-struct msqid_ds msqid_buf;
 
 int main (int argc, char **argv) {
   int timeoutValue = 30;
@@ -89,18 +60,10 @@ int main (int argc, char **argv) {
   //Set the default alarm time
   alarm(QUIT_TIMEOUT);
 
-  if((slaveQueueId = msgget(slaveKey, IPC_CREAT | 0777)) == -1) {
-    perror("    Slave msgget for slave queue");
-    exit(-1);
-  }
-
   if((masterQueueId = msgget(masterKey, IPC_CREAT | 0777)) == -1) {
     perror("    Slave msgget for master queue");
     exit(-1);
   }
-
-  //Where process block-receives for its message to continue
-
 
   //Set an alarm to 10 more seconds than the parent process
   //so that the child will be killed if parents gets killed
@@ -116,31 +79,10 @@ int main (int argc, char **argv) {
   startTime = myStruct->ossTimer;
   currentTime = myStruct->ossTimer - startTime;
 
-  while(1) {
-    if(myStruct->sigNotReceived) {
-      getMessage(slaveQueueId, 2);
-      if(currentTime = (myStruct->ossTimer - startTime) >= duration) {
-        break;
-      }
-      sendMessage(slaveQueueId, 2, myStruct->ossTimer);
-    }
-    else {
-      break;
-    }
-  }
-
   sendMessage(masterQueueId, 3, myStruct->ossTimer);
 
   if(shmdt(myStruct) == -1) {
     perror("    Slave could not detach shared memory");
-  }
-
-  msgctl(masterQueueId, IPC_STAT, &msqid_buf);
-
-  if(myStruct->sigNotReceived) {
-    while(msqid_buf.msg_qnum != 0) {
-      msgctl(masterQueueId, IPC_STAT, &msqid_buf);
-     }
   }
 
   printf("    Slave %d exiting\n", processNumber);
@@ -157,12 +99,7 @@ void sendMessage(int qid, int msgtype, long long finishTime) {
   struct msgbuf msg;
 
   msg.mType = msgtype;
-  if(qid == slaveQueueId) {
-    sprintf(msg.mText, "Consumed message from slave %d\n", processNumber);
-  }
-  if(qid == masterQueueId) {
-    sprintf(msg.mText, "%llu.%09llu\n", finishTime / NANO_MODIFIER, finishTime % NANO_MODIFIER);
-  }
+  sprintf(msg.mText, "%llu.%09llu\n", finishTime / NANO_MODIFIER, finishTime % NANO_MODIFIER);
 
   if(msgsnd(qid, (void *) &msg, sizeof(msg.mText), IPC_NOWAIT) == -1) {
     perror("    Slave msgsnd error");

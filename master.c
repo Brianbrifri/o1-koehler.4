@@ -5,9 +5,6 @@ int main (int argc, char **argv)
   nArg = malloc(20);
   tArg = malloc(20);
   mArg = malloc(20);
-  key_t timerKey = 148364;
-  key_t masterKey = 128464;
-  key_t slaveKey = 120314;
   int hflag = 0;
   int nonOptArgFlag = 0;
   int index;
@@ -94,25 +91,35 @@ int main (int argc, char **argv)
   //set the alarm to tValue seconds
   alarm(tValue);
 
+  int sizeArray = sizeof(*pcbArray) * 18;
+
   //Try to get the shared mem id from the key with a size of the struct
   //create it with all perms
   if((shmid = shmget(timerKey, sizeof(sharedStruct), IPC_CREAT | 0777)) == -1) {
-    perror("Bad shmget allocation");
+    perror("Bad shmget allocation shared struct");
     exit(-1);
   }
 
   //Try to attach the struct pointer to shared memory
-  if((myStruct = (sharedStruct *)shmat(shmid, NULL, 0)) == (void *) -1) {
+  if((myStruct = (struct sharedStruct *)shmat(shmid, NULL, 0)) == (void *) -1) {
     perror("Master could not attach shared mem");
     exit(-1);
   }
-
-  if((slaveQueueId = msgget(slaveKey, IPC_CREAT | 0777)) == -1) {
-    perror("Master msgget for slave queue");
+  
+  //get shmid for pcbArray of 18 pcbs
+  if((pcbShmid = shmget(pcbArrayKey, sizeArray, IPC_CREAT | 0777)) == -1) {
+    perror("Bad shmget allocation pcb array");
     exit(-1);
   }
 
-  if((masterQueueId = msgget(masterKey, IPC_CREAT | 0777)) == -1) {
+  //try to attach pcb array to shared memory
+  if((pcbArray = (struct PCB *)shmat(pcbShmid, NULL, 0)) == (void *) -1) {
+    perror("Master could not attach to pcb array");
+    exit(-1);
+  }
+
+  //create message queue for the master process
+  if((masterQueueId = msgget(masterQueueKey, IPC_CREAT | 0777)) == -1) {
     perror("Master msgget for master queue");
     exit(-1);
   }
@@ -227,9 +234,14 @@ void cleanup() {
 
   printf("Master about to detach from shared memory\n");
   //Detach and remove the shared memory after all child process have died
-  if(detachAndRemove(shmid, myStruct) == -1) {
+  if(detachAndRemoveTimer(shmid, myStruct) == -1) {
     perror("Failed to destroy shared memory segment");
   }
+
+  if(detachAndRemoveArray(pcbShmid, pcbArray) == -1) {
+    perror("Failed to destroy shared memory segment");
+  }
+
 
   printf("Master about to delete message queues\n");
   //Delete the message queues
@@ -258,39 +270,15 @@ void sendMessage(int qid, int msgtype) {
 
 }
 
-void processDeath(int qid, int msgtype, FILE *file) {
-  struct msgbuf msg;
 
-
-  if(msgrcv(qid, (void *) &msg, sizeof(msg.mText), msgtype, MSG_NOERROR | IPC_NOWAIT) == -1) {
-    if(errno != ENOMSG) {
-      perror("Master msgrcv");
-    }
-  }
-  else {
-    msgctl(masterQueueId, IPC_STAT, &msqid_ds_buf);
-    messageReceived++;
-    printf("%03d - Master: Slave %d terminating at my time %llu.%09llu because slave reached %s",
-            messageReceived, msqid_ds_buf.msg_lspid, myStruct->ossTimer / NANO_MODIFIER, myStruct->ossTimer % NANO_MODIFIER, msg.mText);
-    fprintf(file, "%03d - Master: Slave %d terminating at my time %llu.%09llu because slave reached %s",
-            messageReceived, msqid_ds_buf.msg_lspid, myStruct->ossTimer / NANO_MODIFIER, myStruct->ossTimer % NANO_MODIFIER, msg.mText);
-
-
-    fprintf(stderr, "%s*****Master: %s%d%s/%d children completed work*****%s\n",YLW, RED, messageReceived, YLW, TOTAL_SLAVES, NRM);
-
-    sendMessage(slaveQueueId, 2);
-    ++nextProcessToSend;
-    if(processNumberBeingSpawned <= TOTAL_SLAVES) {
-      spawnSlaves(1);
-    }
-  }
-}
-
+//Set queue pointers to null
 void createQueues() {
   front0 = front1 = front2 = front3 = NULL;
   rear0 = rear1 = rear2 = rear3 = NULL;
+  queue0size = queue1size = queue2size = queue3size = 0;
 }
 
+//Function to check if a queue is empty
 bool isEmpty(int choice) {
   switch(choice) {
     case 0:
@@ -315,6 +303,7 @@ bool isEmpty(int choice) {
   return false;
 }
 
+//Function to add a process id to a given queue
 void Enqueue(pid_t processId, int choice) {
   switch(choice) {
     case 0:
@@ -390,6 +379,7 @@ void Enqueue(pid_t processId, int choice) {
   }
 }
 
+//function to pop the process id for a given queue
 pid_t pop(int choice) {
   pid_t poppedID;
   switch(choice) {
@@ -485,8 +475,41 @@ pid_t pop(int choice) {
   return poppedID;
 }
 
+//make sure all the nodes in the queues are freed
+void clearQueues(void) {
+  while(!isEmpty(QUEUE0)) {
+    pop(QUEUE0);
+  }
+  while(!isEmpty(QUEUE1)) {
+    pop(QUEUE1);
+  }
+  while(!isEmpty(QUEUE2)) {
+    pop(QUEUE2);
+  }
+  while(!isEmpty(QUEUE3)) {
+    pop(QUEUE3);
+  }
+}
+
 //Detach and remove function
-int detachAndRemove(int shmid, sharedStruct *shmaddr) {
+int detachAndRemoveTimer(int shmid, sharedStruct *shmaddr) {
+  printf("Master: Detach and Remove Shared Memory\n");
+  int error = 0;
+  if(shmdt(shmaddr) == -1) {
+    error = errno;
+  }
+  if((shmctl(shmid, IPC_RMID, NULL) == -1) && !error) {
+    error = errno;
+  }
+  if(!error) {
+    return 0;
+  }
+
+  return -1;
+}
+
+//Detach and remove function
+int detachAndRemoveArray(int shmid, PCB *shmaddr) {
   printf("Master: Detach and Remove Shared Memory\n");
   int error = 0;
   if(shmdt(shmaddr) == -1) {
