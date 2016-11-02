@@ -15,7 +15,9 @@
 #include <signal.h>
 #include <errno.h>
 #include <time.h>
-void sendMessage(int, int, long long);
+int willBlockIO(void);
+long long getPartialQuantum(void);
+void sendMessage(int, int);
 void getMessage(int, int);
 void alarmHandler(int);
 void sigquitHandler(int);

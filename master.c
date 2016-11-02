@@ -157,9 +157,9 @@ int main (int argc, char **argv)
 
     myStruct->ossTimer += incrementTimer();
 
-    while(myStruct->scheduledProcess != -1); 
+    updateAfterProcessFinish(waitForTurn());
   
-  } while (myStruct->ossTimer < 20000000000 && myStruct->sigNotReceived);
+  } while (myStruct->ossTimer < 2000000 && myStruct->sigNotReceived);
 
   if(!cleanupCalled) {
     cleanupCalled = 1;
@@ -202,6 +202,7 @@ void spawnSlave(void) {
       if(childPid == 0) {
         printf("get my pid: %d\n", getpid());
         pcbArray[processNumberBeingSpawned].processID = getpid();
+        pcbArray[processNumberBeingSpawned].priority = queuePriorityNormal_1;
         pcbArray[processNumberBeingSpawned].totalScheduledTime = scheduleProcessTime();
         sprintf(mArg, "%d", shmid);
         sprintf(nArg, "%d", processNumberBeingSpawned);
@@ -216,85 +217,83 @@ void spawnSlave(void) {
     printf("assignedPCB = %d\n", processNumberBeingSpawned);
     if(processNumberBeingSpawned != -1) {
       while(pcbArray[processNumberBeingSpawned].processID <= 1); 
-      Enqueue(pcbArray[processNumberBeingSpawned].processID, QUEUE0);
+      Enqueue(pcbArray[processNumberBeingSpawned].processID, QUEUE1);
     }
 
 }
 
 
-//Interrupt handler function that calls the process destroyer
-//Ignore SIGQUIT and SIGINT signal, not SIGALRM, so that
-//I can handle those two how I want
-void interruptHandler(int SIG){
-  signal(SIGQUIT, SIG_IGN);
-  signal(SIGINT, SIG_IGN);
-
-  if(SIG == SIGINT) {
-    fprintf(stderr, "\n%sCTRL-C received. Calling shutdown functions.%s\n", RED, NRM);
-  }
-
-  if(SIG == SIGALRM) {
-    fprintf(stderr, "%sMaster has timed out. Initiating shutdown sequence.%s\n", RED, NRM);
-  }
-
-  if(!cleanupCalled) {
-    cleanupCalled = 1;
-    printf("Master cleanup called from interrupt\n");
-    cleanup();
-  }
-}
-
-//Cleanup memory and processes.
-//kill calls SIGQUIT on the groupid to kill the children but
-//not the parent
-void cleanup() {
-  signal(SIGQUIT, SIG_IGN);
-  myStruct->sigNotReceived = 0;
-
-  printf("Master sending SIGQUIT\n");
-  kill(-getpgrp(), SIGQUIT);
-
-  //free up the malloc'd memory for the arguments
-  free(mArg);
-  free(nArg);
-  free(pArg);
-  free(tArg);
-  printf("Master waiting on all processes do die\n");
-  childPid = wait(&status);
-
-  printf("Master about to detach from shared memory\n");
-  //Detach and remove the shared memory after all child process have died
-  if(detachAndRemoveTimer(shmid, myStruct) == -1) {
-    perror("Failed to destroy shared memory segment");
-  }
-
-  if(detachAndRemoveArray(pcbShmid, pcbArray) == -1) {
-    perror("Failed to destroy shared memory segment");
-  }
-
-  clearQueues();
-
-  printf("Master about to delete message queues\n");
-  //Delete the message queues
-  msgctl(slaveQueueId, IPC_RMID, NULL);
-  msgctl(masterQueueId, IPC_RMID, NULL);
-
-  if(fclose(file)) {
-    perror("    Error closing file");
-  }
-
-
-  printf("Master about to kill itself\n");
-  //Kill this master process
-  kill(getpid(), SIGKILL);
-}
 
 int incrementTimer(void) {
   return rand() % 1001;
 }
 
 int scheduleProcessTime(void) {
-  return rand() % 300000;
+  return rand() % 70000;
+}
+
+int waitForTurn(void) {
+  struct msgbuf msg;
+
+  if(msgrcv(masterQueueId, (void *) &msg, sizeof(msg.mText), 3, MSG_NOERROR) == -1) {
+    if(errno != ENOMSG) {
+      perror("Error master receiving message");
+      return -1;
+    }
+    printf("No message for master\n");
+    return -1;
+  }
+  else {
+    printf("Message received by master: %s\n", msg.mText);
+    int processNum = atoi(msg.mText);
+    while(myStruct->scheduledProcess != -1);
+    return processNum;
+  }
+}
+
+void updateAfterProcessFinish(int processLocation) {
+
+  if(processLocation == -1) {
+    return;
+  }
+
+  pid_t id = pcbArray[processLocation].processID;
+  long long lastBurst = pcbArray[processLocation].lastBurst;
+  long long priority = pcbArray[processLocation].priority;
+
+  if(id != 0) {
+    if(priority == queuePriorityHigh) {
+      Enqueue(id, QUEUE0);
+    }
+    else if(lastBurst < priority) {
+      pcbArray[processLocation].priority = queuePriorityNormal_1;
+      Enqueue(id, QUEUE1);
+    }
+    else {
+      if(priority == queuePriorityNormal_1) {
+        pcbArray[processLocation].priority = queuePriorityNormal_2;
+        Enqueue(id, QUEUE2);
+      }
+      else if(priority == queuePriorityNormal_2) {
+        pcbArray[processLocation].priority = queuePriorityNormal_3;
+        Enqueue(id, QUEUE3);
+      }
+      else if(priority == queuePriorityNormal_3) {
+        pcbArray[processLocation].priority = queuePriorityNormal_3;
+        Enqueue(id, QUEUE3);
+      }
+      else {
+        printf("Unhandled priority exception\n");
+      
+      }
+
+    }
+ 
+  }
+  else {
+    printf("Process completed its time\n");
+  }
+
 }
 
 pid_t scheduleNextProcess(void) {
@@ -530,6 +529,74 @@ pid_t pop(int choice) {
   }
   return poppedID;
 }
+
+//Interrupt handler function that calls the process destroyer
+//Ignore SIGQUIT and SIGINT signal, not SIGALRM, so that
+//I can handle those two how I want
+void interruptHandler(int SIG){
+  signal(SIGQUIT, SIG_IGN);
+  signal(SIGINT, SIG_IGN);
+
+  if(SIG == SIGINT) {
+    fprintf(stderr, "\n%sCTRL-C received. Calling shutdown functions.%s\n", RED, NRM);
+  }
+
+  if(SIG == SIGALRM) {
+    fprintf(stderr, "%sMaster has timed out. Initiating shutdown sequence.%s\n", RED, NRM);
+  }
+
+  if(!cleanupCalled) {
+    cleanupCalled = 1;
+    printf("Master cleanup called from interrupt\n");
+    cleanup();
+  }
+}
+
+//Cleanup memory and processes.
+//kill calls SIGQUIT on the groupid to kill the children but
+//not the parent
+void cleanup() {
+  signal(SIGQUIT, SIG_IGN);
+  myStruct->sigNotReceived = 0;
+
+  printf("Master sending SIGQUIT\n");
+  kill(-getpgrp(), SIGQUIT);
+
+  //free up the malloc'd memory for the arguments
+  free(mArg);
+  free(nArg);
+  free(pArg);
+  free(tArg);
+  printf("Master waiting on all processes do die\n");
+  childPid = wait(&status);
+
+  printf("Master about to detach from shared memory\n");
+  //Detach and remove the shared memory after all child process have died
+  if(detachAndRemoveTimer(shmid, myStruct) == -1) {
+    perror("Failed to destroy shared memory segment");
+  }
+
+  if(detachAndRemoveArray(pcbShmid, pcbArray) == -1) {
+    perror("Failed to destroy shared memory segment");
+  }
+
+  clearQueues();
+
+  printf("Master about to delete message queues\n");
+  //Delete the message queues
+  msgctl(slaveQueueId, IPC_RMID, NULL);
+  msgctl(masterQueueId, IPC_RMID, NULL);
+
+  if(fclose(file)) {
+    perror("    Error closing file");
+  }
+
+
+  printf("Master about to kill itself\n");
+  //Kill this master process
+  kill(getpid(), SIGKILL);
+}
+
 
 //make sure all the nodes in the queues are freed
 void clearQueues(void) {

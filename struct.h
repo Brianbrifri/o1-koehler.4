@@ -14,7 +14,6 @@ typedef struct sharedStruct {
   long long ossTimer;
   int sigNotReceived;
   pid_t scheduledProcess;
-  long long scheduledTime;
 } sharedStruct;
 
 typedef struct msgbuf {
@@ -25,11 +24,9 @@ typedef struct msgbuf {
 typedef struct PCB {
   pid_t processID;
   long long totalScheduledTime;
-  long long quantumScheduled;
-  long long timeRan;
+  long long totalTimeRan;
   long long lastBurst;
-  int priority;
-  bool ioInterrupt;
+  long long priority;
 } PCB;
 
 #endif

@@ -24,6 +24,8 @@ void setTimeToSpawn(void);
 int incrementTimer(void);
 int scheduleProcessTime(void);
 pid_t scheduleNextProcess(void);
+int waitForTurn(void);
+void updateAfterProcessFinish(int);
 void interruptHandler(int);
 void cleanup(void);
 void sendMessage(int, int);
@@ -56,6 +58,11 @@ int queue0size;
 int queue1size;
 int queue2size;
 int queue3size;
+
+const long long queuePriorityHigh = 1000;
+const long long queuePriorityNormal_1 = 3000;
+const long long queuePriorityNormal_2 = 6000;
+const long long queuePriorityNormal_3 = 12000;
 
 void createQueues(void);
 bool isEmpty(int);

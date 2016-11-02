@@ -82,21 +82,34 @@ int main (int argc, char **argv) {
   int i = 0;
   int j;
 
-  long long duration = 1 + rand() % 100000;
+  long long duration;
+  int notFinished = 1;
 
-  pcbArray[processNumber].processID = getpid();
+  do {
+  
+    while(myStruct->scheduledProcess != getpid() && myStruct->sigNotReceived);
 
-  while(myStruct->scheduledProcess != getpid());
+    if(willBlockIO() == 1) {
+      duration = getPartialQuantum(); 
+    }
+    else {
+      duration = pcbArray[processNumber].priority;
+    }
 
-  printf("    Slave %d got duration %llu\n", processNumber, duration);
-  startTime = myStruct->ossTimer;
-  currentTime = myStruct->ossTimer - startTime;
+    pcbArray[processNumber].lastBurst = duration;
+    pcbArray[processNumber].totalTimeRan += duration;
 
-  pcbArray[processNumber].lastBurst = duration;
+    myStruct->ossTimer += duration;
+    myStruct->scheduledProcess = -1;
 
-  myStruct->scheduledProcess = -1;
-
-  sendMessage(masterQueueId, 3, myStruct->ossTimer);
+    if(pcbArray[processNumber].totalTimeRan >= pcbArray[processNumber].totalScheduledTime) {
+      notFinished = 0; 
+      pcbArray[processNumber].processID = 0;
+    }
+ 
+    sendMessage(masterQueueId, 3);
+  
+  } while (notFinished && myStruct->sigNotReceived);
 
   if(shmdt(myStruct) == -1) {
     perror("    Slave could not detach shared memory struct");
@@ -115,12 +128,19 @@ int main (int argc, char **argv) {
 
 }
 
+int willBlockIO(void) {
+  return 1 + rand() % 5;
+}
 
-void sendMessage(int qid, int msgtype, long long finishTime) {
+long long getPartialQuantum(void) {
+  return rand() % pcbArray[processNumber].priority + 1;
+}
+
+void sendMessage(int qid, int msgtype) {
   struct msgbuf msg;
 
   msg.mType = msgtype;
-  sprintf(msg.mText, "%llu.%09llu\n", finishTime / NANO_MODIFIER, finishTime % NANO_MODIFIER);
+  sprintf(msg.mText, "%d", processNumber);
 
   if(msgsnd(qid, (void *) &msg, sizeof(msg.mText), IPC_NOWAIT) == -1) {
     perror("    Slave msgsnd error");
