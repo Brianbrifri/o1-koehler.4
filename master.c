@@ -137,7 +137,7 @@ int main (int argc, char **argv)
   }
 
   //Open file and mark the beginning of the new log
-  file = fopen(filename, "a");
+  file = fopen(filename, "w");
   if(!file) {
     perror("Error opening file");
     exit(-1);
@@ -176,12 +176,14 @@ int main (int argc, char **argv)
 
 bool isTimeToSpawn(void) {
   printf("Checking time to spawn: future = %llu timer =  %llu\n", timeToSpawn, myStruct->ossTimer);
+  fprintf(file, "Checking time to spawn: future = %llu timer =  %llu\n", timeToSpawn, myStruct->ossTimer);
   return myStruct->ossTimer >= timeToSpawn ? true : false;
 }
 
 void setTimeToSpawn(void) {
   timeToSpawn = myStruct->ossTimer + rand() % 20000;
   printf("Will try to spawn slave at time %llu\n", timeToSpawn);
+  fprintf(file, "Will try to spawn slave at time %llu\n", timeToSpawn);
 }
 
 void spawnSlave(void) {
@@ -199,10 +201,12 @@ void spawnSlave(void) {
 
     if(processNumberBeingSpawned == -1) {
       printf("pcb array is full. no process created.\n");
+      fprintf(file, "pcb array is full. no process created.\n");
     }
 
     if(processNumberBeingSpawned != -1) {
       printf("About to spawn process #%d\n", processNumberBeingSpawned);
+      fprintf(file, "About to spawn process #%d\n", processNumberBeingSpawned);
       //exit on bad fork
       if((childPid = fork()) < 0) {
         perror("Fork Failure");
@@ -215,6 +219,7 @@ void spawnSlave(void) {
         pcbArray[processNumberBeingSpawned].priority = queuePriorityNormal_1;
         pcbArray[processNumberBeingSpawned].totalScheduledTime = scheduleProcessTime();
         printf(" Process %d at location %d was scheduled for time %llu\n", getpid(), processNumberBeingSpawned, pcbArray[processNumberBeingSpawned].totalScheduledTime);
+        fprintf(file, " Process %d at location %d was scheduled for time %llu\n", getpid(), processNumberBeingSpawned, pcbArray[processNumberBeingSpawned].totalScheduledTime);
         sprintf(mArg, "%d", shmid);
         sprintf(nArg, "%d", processNumberBeingSpawned);
         sprintf(pArg, "%d", pcbShmid);
@@ -258,6 +263,7 @@ int waitForTurn(void) {
   else {
     int processNum = atoi(msg.mText);
     printf("Message from %d:%d\n", pcbArray[processNum].processID, processNum);
+    fprintf(file, "Message from %d:%d\n", pcbArray[processNum].processID, processNum);
     return processNum;
   }
 }
@@ -303,6 +309,7 @@ void updateAfterProcessFinish(int processLocation) {
   }
   else {
     printf("Process completed its time\n");
+    fprintf(file, "Process completed its time\n");
     pcbArray[processLocation].totalScheduledTime = 0;
     pcbArray[processLocation].lastBurst = 0;
     pcbArray[processLocation].totalTimeRan = 0;
@@ -374,6 +381,7 @@ bool isEmpty(int choice) {
 //Function to add a process id to a given queue
 void Enqueue(pid_t processId, int choice) {
   printf("Enqueuing pid %d in queue %d\n", processId, choice);
+  fprintf(file, "Enqueuing pid %d in queue %d\n", processId, choice);
   switch(choice) {
     case 0:
       if(rear0 == NULL) {
@@ -542,6 +550,7 @@ pid_t pop(int choice) {
       printf("Not a valid queue choice\n");
   }
   printf("Got pid %d from queue %d\n", poppedID, choice);
+  fprintf(file, "Got pid %d from queue %d\n", poppedID, choice);
   return poppedID;
 }
 
