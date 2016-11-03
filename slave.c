@@ -91,12 +91,11 @@ int main (int argc, char **argv) {
 
     if(willBlockIO() == 1) {
       duration = getPartialQuantum(); 
-      printf("    Slave %d:%d got duration %llu out of %llu\n", myPid, processNumber, duration, pcbArray[processNumber].priority);
     }
     else {
       duration = pcbArray[processNumber].priority;
-      printf("    Slave %d:%d got duration %llu out of %llu\n", myPid, processNumber, duration, pcbArray[processNumber].priority);
     }
+    printf("    Slave %d:%d got duration %llu out of %llu\n", myPid, processNumber, duration, pcbArray[processNumber].priority);
 
     pcbArray[processNumber].lastBurst = duration;
     pcbArray[processNumber].totalTimeRan += duration;

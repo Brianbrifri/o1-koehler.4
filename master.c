@@ -269,6 +269,8 @@ int waitForTurn(void) {
     int processNum = atoi(msg.mText);
     printf("Message from %d:%d\n", pcbArray[processNum].processID, processNum);
     fprintf(file, "Message from %d:%d\n", pcbArray[processNum].processID, processNum);
+    fprintf(file, "    Slave %d:%d got duration %llu out of %llu\n", pcbArray[processNum].processID, processNum, pcbArray[processNum].lastBurst, pcbArray[processNum].priority);
+    fprintf(file, "    Slave %d:%d has ran for a total of %llu out of %llu\n", pcbArray[processNum].processID, processNum, pcbArray[processNum].totalTimeRan, pcbArray[processNum].totalScheduledTime);
     return processNum;
   }
 }
