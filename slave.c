@@ -91,11 +91,11 @@ int main (int argc, char **argv) {
 
     if(willBlockIO() == 1) {
       duration = getPartialQuantum(); 
-      printf("Slave %d:%d got duration %llu out of %llu\n", myPid, processNumber, duration, pcbArray[processNumber].priority);
+      printf("    Slave %d:%d got duration %llu out of %llu\n", myPid, processNumber, duration, pcbArray[processNumber].priority);
     }
     else {
       duration = pcbArray[processNumber].priority;
-      printf("Slave %d:%d got duration %llu out of %llu\n", myPid, processNumber, duration, pcbArray[processNumber].priority);
+      printf("    Slave %d:%d got duration %llu out of %llu\n", myPid, processNumber, duration, pcbArray[processNumber].priority);
     }
 
     pcbArray[processNumber].lastBurst = duration;
@@ -112,7 +112,7 @@ int main (int argc, char **argv) {
     
     myStruct->scheduledProcess = -1;
 
-    printf("Slave %d:%d has ran for a total of %llu out of %llu\n", myPid, processNumber, pcbArray[processNumber].totalTimeRan, pcbArray[processNumber].totalScheduledTime);
+    printf("    Slave %d:%d has ran for a total of %llu out of %llu\n", myPid, processNumber, pcbArray[processNumber].totalTimeRan, pcbArray[processNumber].totalScheduledTime);
   
   } while (notFinished && myStruct->sigNotReceived);
 

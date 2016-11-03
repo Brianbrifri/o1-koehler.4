@@ -127,7 +127,8 @@ int main (int argc, char **argv)
   }
 
 
-  for (int i = 0; i < ARRAY_SIZE; i++) {
+  int i;
+  for (i = 0; i < ARRAY_SIZE; i++) {
     pcbArray[i].processID = 0;
     pcbArray[i].priority = 0;
     pcbArray[i].totalScheduledTime = 0;
@@ -187,7 +188,8 @@ void spawnSlave(void) {
 
     processNumberBeingSpawned = -1;
     
-    for(int i = 0; i < ARRAY_SIZE; i++) {
+    int i;
+    for(i = 0; i < ARRAY_SIZE; i++) {
       if(pcbArray[i].processID == 0) {
         processNumberBeingSpawned = i;
         pcbArray[i].processID = 1;
