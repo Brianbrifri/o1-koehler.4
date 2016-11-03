@@ -22,6 +22,7 @@ void spawnSlave(void);
 bool isTimeToSpawn(void);
 void setTimeToSpawn(void);
 int incrementTimer(void);
+long long getProcessPriority(void);
 int scheduleProcessTime(void);
 pid_t scheduleNextProcess(void);
 int waitForTurn(void);
@@ -59,7 +60,7 @@ int queue1size;
 int queue2size;
 int queue3size;
 
-const long long queuePriorityHigh = 1000;
+const long long queuePriorityHigh = 4000;
 const long long queuePriorityNormal_1 = 3000;
 const long long queuePriorityNormal_2 = 6000;
 const long long queuePriorityNormal_3 = 12000;

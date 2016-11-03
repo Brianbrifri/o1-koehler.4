@@ -216,7 +216,7 @@ void spawnSlave(void) {
       //If good fork, continue to call exec with all the necessary args
       if(childPid == 0) {
         pcbArray[processNumberBeingSpawned].processID = getpid();
-        pcbArray[processNumberBeingSpawned].priority = queuePriorityNormal_1;
+        pcbArray[processNumberBeingSpawned].priority = getProcessPriority();
         pcbArray[processNumberBeingSpawned].totalScheduledTime = scheduleProcessTime();
         printf(" Process %d at location %d was scheduled for time %llu\n", getpid(), processNumberBeingSpawned, pcbArray[processNumberBeingSpawned].totalScheduledTime);
         fprintf(file, " Process %d at location %d was scheduled for time %llu\n", getpid(), processNumberBeingSpawned, pcbArray[processNumberBeingSpawned].totalScheduledTime);
@@ -244,7 +244,12 @@ int incrementTimer(void) {
 }
 
 int scheduleProcessTime(void) {
-  return rand() % 70000;
+  return rand() % 70001;
+}
+
+long long getProcessPriority(void) {
+  int random = rand() % 20;
+  return random == 1 ? queuePriorityHigh : queuePriorityNormal_1;
 }
 
 int waitForTurn(void) {
@@ -468,13 +473,11 @@ pid_t pop(int choice) {
       else {
         if(frontA0->next != NULL) {
           frontA0 = frontA0->next;
-          printf("popped %d\n", front0->id);
           poppedID = front0->id;
           free(front0);
           front0 = frontA0;
         }
         else {
-          printf("popped %d\n", front0->id);
           poppedID = front0->id;
           free(front0);
           front0 = NULL;
