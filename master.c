@@ -129,6 +129,10 @@ int main (int argc, char **argv)
 
   for (int i = 0; i < ARRAY_SIZE; i++) {
     pcbArray[i].processID = 0;
+    pcbArray[i].priority = 0;
+    pcbArray[i].totalScheduledTime = 0;
+    pcbArray[i].lastBurst = 0;
+    pcbArray[i].totalTimeRan = 0;
   }
 
   //Open file and mark the beginning of the new log
@@ -159,7 +163,7 @@ int main (int argc, char **argv)
 
     updateAfterProcessFinish(waitForTurn());
   
-  } while (myStruct->ossTimer < 2000000 && myStruct->sigNotReceived);
+  } while (myStruct->ossTimer < 700000 && myStruct->sigNotReceived);
 
   if(!cleanupCalled) {
     cleanupCalled = 1;
@@ -170,11 +174,13 @@ int main (int argc, char **argv)
 }
 
 bool isTimeToSpawn(void) {
-  return timeToSpawn >= myStruct->ossTimer ? true : false;
+  printf("Checking time to spawn: future = %llu timer =  %llu\n", timeToSpawn, myStruct->ossTimer);
+  return myStruct->ossTimer >= timeToSpawn ? true : false;
 }
 
 void setTimeToSpawn(void) {
-  timeToSpawn = myStruct->ossTimer + rand() % 2000000000;
+  timeToSpawn = myStruct->ossTimer + rand() % 20000;
+  printf("Will try to spawn slave at time %llu\n", timeToSpawn);
 }
 
 void spawnSlave(void) {
@@ -185,9 +191,12 @@ void spawnSlave(void) {
       if(pcbArray[i].processID == 0) {
         processNumberBeingSpawned = i;
         pcbArray[i].processID = 1;
-        printf("Got location %d for new process\n", processNumberBeingSpawned);
         break;
       } 
+    }
+
+    if(processNumberBeingSpawned == -1) {
+      printf("pcb array is full. no process created.\n");
     }
 
     if(processNumberBeingSpawned != -1) {
@@ -200,10 +209,10 @@ void spawnSlave(void) {
 
       //If good fork, continue to call exec with all the necessary args
       if(childPid == 0) {
-        printf("get my pid: %d\n", getpid());
         pcbArray[processNumberBeingSpawned].processID = getpid();
         pcbArray[processNumberBeingSpawned].priority = queuePriorityNormal_1;
         pcbArray[processNumberBeingSpawned].totalScheduledTime = scheduleProcessTime();
+        printf(" Process %d at location %d was scheduled for time %llu\n", getpid(), processNumberBeingSpawned, pcbArray[processNumberBeingSpawned].totalScheduledTime);
         sprintf(mArg, "%d", shmid);
         sprintf(nArg, "%d", processNumberBeingSpawned);
         sprintf(pArg, "%d", pcbShmid);
@@ -214,7 +223,6 @@ void spawnSlave(void) {
       }
       
     }
-    printf("assignedPCB = %d\n", processNumberBeingSpawned);
     if(processNumberBeingSpawned != -1) {
       while(pcbArray[processNumberBeingSpawned].processID <= 1); 
       Enqueue(pcbArray[processNumberBeingSpawned].processID, QUEUE1);
@@ -235,7 +243,9 @@ int scheduleProcessTime(void) {
 int waitForTurn(void) {
   struct msgbuf msg;
 
-  if(msgrcv(masterQueueId, (void *) &msg, sizeof(msg.mText), 3, MSG_NOERROR) == -1) {
+  while(myStruct->scheduledProcess != -1);
+
+  if(msgrcv(masterQueueId, (void *) &msg, sizeof(msg.mText), 3, IPC_NOWAIT) == -1) {
     if(errno != ENOMSG) {
       perror("Error master receiving message");
       return -1;
@@ -244,9 +254,8 @@ int waitForTurn(void) {
     return -1;
   }
   else {
-    printf("Message received by master: %s\n", msg.mText);
     int processNum = atoi(msg.mText);
-    while(myStruct->scheduledProcess != -1);
+    printf("Message from %d:%d\n", pcbArray[processNum].processID, processNum);
     return processNum;
   }
 }
