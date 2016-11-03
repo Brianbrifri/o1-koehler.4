@@ -303,6 +303,9 @@ void updateAfterProcessFinish(int processLocation) {
   }
   else {
     printf("Process completed its time\n");
+    pcbArray[processLocation].totalScheduledTime = 0;
+    pcbArray[processLocation].lastBurst = 0;
+    pcbArray[processLocation].totalTimeRan = 0;
   }
 
 }
@@ -538,6 +541,7 @@ pid_t pop(int choice) {
     default:
       printf("Not a valid queue choice\n");
   }
+  printf("Got pid %d from queue %d\n", poppedID, choice);
   return poppedID;
 }
 

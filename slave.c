@@ -101,14 +101,17 @@ int main (int argc, char **argv) {
     pcbArray[processNumber].lastBurst = duration;
     pcbArray[processNumber].totalTimeRan += duration;
 
-    myStruct->ossTimer += duration;
 
     sendMessage(masterQueueId, 3);
 
     if(pcbArray[processNumber].totalTimeRan >= pcbArray[processNumber].totalScheduledTime) {
+      duration -= (pcbArray[processNumber].totalTimeRan - pcbArray[processNumber].totalScheduledTime);
+      pcbArray[processNumber].totalTimeRan = pcbArray[processNumber].totalScheduledTime;
       notFinished = 0; 
       pcbArray[processNumber].processID = 0;
     }
+
+    myStruct->ossTimer += duration;
     
     myStruct->scheduledProcess = -1;
 
