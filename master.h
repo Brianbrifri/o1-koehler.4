@@ -61,10 +61,10 @@ int queue1size;
 int queue2size;
 int queue3size;
 
-const long long queuePriorityHigh = 4000;
-const long long queuePriorityNormal_1 = 3000;
-const long long queuePriorityNormal_2 = 6000;
-const long long queuePriorityNormal_3 = 12000;
+const long long queuePriorityHigh = 40000000;
+const long long queuePriorityNormal_1 = 30000000;
+const long long queuePriorityNormal_2 = 60000000;
+const long long queuePriorityNormal_3 = 120000000;
 
 void createQueues(void);
 bool isEmpty(int);
@@ -106,9 +106,13 @@ int messageReceived = 0;
 
 struct sharedStruct *myStruct;
 
-const int TOTAL_SLAVES = 100;
+//Constants for timing the program
+const long long MAX_TIME = 20000000000;
+const int MAX_FUTURE_SPAWN = 280000001;
+const int MAX_IDLE_INCREMENT = 10001;
+const int MAX_TOTAL_PROCESS_TIME = 700000001;
+const int CHANCE_HIGH_PRIORITY = 20;
 const int MAXSLAVE = 20;
-const long long INCREMENTER = 40000;
 const int ARRAY_SIZE = 18;
 FILE *file;
 struct msqid_ds msqid_ds_buf;

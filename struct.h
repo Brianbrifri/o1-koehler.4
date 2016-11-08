@@ -33,6 +33,7 @@
 #define TIMER "\x1b[38;5;45m"
 #define IDLE "\x1b[38;5;100m"
 #define LTBLUDIM "\x1b[94;2m"
+#define REPORT "\x1b[48;5;39m"
 static const long long NANO_MODIFIER = 1000000000;
 
 typedef struct sharedStruct {

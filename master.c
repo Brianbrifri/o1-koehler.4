@@ -165,11 +165,11 @@ int main (int argc, char **argv)
     tempIncrement = incrementTimer();
     idleTime += tempIncrement;
     myStruct->ossTimer += tempIncrement;
-    printf("until %s%llu%s\n", TIMER, myStruct->ossTimer, NRM);
+    printf("until %s%llu.%09llu%s\n", TIMER, myStruct->ossTimer / NANO_MODIFIER, myStruct->ossTimer % NANO_MODIFIER, NRM);
 
     updateAfterProcessFinish(waitForTurn());
   
-  } while (myStruct->ossTimer < 700000 && myStruct->sigNotReceived);
+  } while (myStruct->ossTimer < MAX_TIME && myStruct->sigNotReceived);
 
   if(!cleanupCalled) {
     cleanupCalled = 1;
@@ -179,14 +179,14 @@ int main (int argc, char **argv)
 }
 
 bool isTimeToSpawn(void) {
-  printf("%sChecking time to spawn: future = %llu timer = %llu%s\n", DIM, timeToSpawn, myStruct->ossTimer, NRM);
+  printf("%sChecking time to spawn: future = %llu.%09llu timer = %llu.%09llu%s\n", DIM, timeToSpawn / NANO_MODIFIER, timeToSpawn % NANO_MODIFIER, myStruct->ossTimer / NANO_MODIFIER, myStruct->ossTimer % NANO_MODIFIER, NRM);
   fprintf(file, "Checking time to spawn: future = %llu timer = %llu\n", timeToSpawn, myStruct->ossTimer);
   return myStruct->ossTimer >= timeToSpawn ? true : false;
 }
 
 void setTimeToSpawn(void) {
-  timeToSpawn = myStruct->ossTimer + rand() % 20000;
-  printf("Will try to spawn slave at time %s%llu%s\n", YLWBK, timeToSpawn, NRM);
+  timeToSpawn = myStruct->ossTimer + rand() % MAX_FUTURE_SPAWN;
+  printf("Will try to spawn slave at time %s%s%llu.%09llu%s\n", BLK, YLWBK, timeToSpawn / NANO_MODIFIER, timeToSpawn % NANO_MODIFIER, NRM);
   fprintf(file, "Will try to spawn slave at time %llu\n", timeToSpawn);
 }
 
@@ -219,11 +219,11 @@ void spawnSlave(void) {
       //If good fork, continue to call exec with all the necessary args
       if(childPid == 0) {
         totalProcessesSpawned++;
-        pcbArray[processNumberBeingSpawned].processID = getpid();
         pcbArray[processNumberBeingSpawned].priority = getProcessPriority();
         pcbArray[processNumberBeingSpawned].totalScheduledTime = scheduleProcessTime();
         pcbArray[processNumberBeingSpawned].createTime = myStruct->ossTimer;
-        printf("Process %s%d%s at location %s%d%s was scheduled for duration %s%llu%s at time %s%llu%s\n", BBU, getpid(), NRM, RBU, processNumberBeingSpawned, NRM, YBU, pcbArray[processNumberBeingSpawned].totalScheduledTime, NRM, TIMER, myStruct->ossTimer, NRM);
+        pcbArray[processNumberBeingSpawned].processID = getpid();
+        printf("Process %s%d%s at location %s%d%s was scheduled for duration %s%llu.%09llu%s at time %s%llu.%09llu%s\n", BBU, getpid(), NRM, RBU, processNumberBeingSpawned, NRM, YBU, pcbArray[processNumberBeingSpawned].totalScheduledTime / NANO_MODIFIER, pcbArray[processNumberBeingSpawned].totalScheduledTime % NANO_MODIFIER, NRM, TIMER, myStruct->ossTimer / NANO_MODIFIER, myStruct->ossTimer % NANO_MODIFIER, NRM);
         fprintf(file, "Process %d at location %d was scheduled for duration %llu\n", getpid(), processNumberBeingSpawned, pcbArray[processNumberBeingSpawned].totalScheduledTime);
         sprintf(mArg, "%d", shmid);
         sprintf(nArg, "%d", processNumberBeingSpawned);
@@ -237,25 +237,29 @@ void spawnSlave(void) {
     }
     if(processNumberBeingSpawned != -1) {
       while(pcbArray[processNumberBeingSpawned].processID <= 1); 
-      Enqueue(pcbArray[processNumberBeingSpawned].processID, QUEUE1);
+      if(pcbArray[processNumberBeingSpawned].priority == queuePriorityHigh) {
+        Enqueue(pcbArray[processNumberBeingSpawned].processID, QUEUE0);
+      }
+      else {
+        Enqueue(pcbArray[processNumberBeingSpawned].processID, QUEUE1);
+      }
     }
-
 }
 
 
 
 int incrementTimer(void) {
-  int random = rand() % 1001;
+  int random = 1 + rand() % MAX_IDLE_INCREMENT;
   printf("Spent %s%d%s in master ", IDLE, random, NRM);
   return random;
 }
 
 int scheduleProcessTime(void) {
-  return rand() % 70001;
+  return 1 + rand() % MAX_TOTAL_PROCESS_TIME;
 }
 
 long long getProcessPriority(void) {
-  int random = rand() % 20;
+  int random = rand() % CHANCE_HIGH_PRIORITY;
   return random == 1 ? queuePriorityHigh : queuePriorityNormal_1;
 }
 
@@ -274,7 +278,7 @@ int waitForTurn(void) {
   }
   else {
     int processNum = atoi(msg.mText);
-    printf("Message from %s%d%s:%s%d%s at time %s%llu%s\n", BBU, pcbArray[processNum].processID, NRM, RBU, processNum, NRM, TIMER, myStruct->ossTimer, NRM);
+    printf("Message from %s%d%s:%s%d%s at time %s%llu.%09llu%s\n", BBU, pcbArray[processNum].processID, NRM, RBU, processNum, NRM, TIMER, myStruct->ossTimer / NANO_MODIFIER, myStruct->ossTimer % NANO_MODIFIER, NRM);
     fprintf(file, "Message from %d:%d at time %llu\n", pcbArray[processNum].processID, processNum, myStruct->ossTimer);
     fprintf(file, "    Slave %d:%d got duration %llu out of %llu\n", pcbArray[processNum].processID, processNum, pcbArray[processNum].lastBurst, pcbArray[processNum].priority);
     fprintf(file, "    Slave %d:%d has ran for a total of %llu out of %llu\n", pcbArray[processNum].processID, processNum, pcbArray[processNum].totalTimeRan, pcbArray[processNum].totalScheduledTime);
@@ -301,23 +305,28 @@ void updateAfterProcessFinish(int processLocation) {
   if(id != 0) {
     if(priority == queuePriorityHigh) {
       Enqueue(id, QUEUE0);
+      return;
     }
     else if(lastBurst < priority) {
       pcbArray[processLocation].priority = queuePriorityNormal_1;
       Enqueue(id, QUEUE1);
+      return;
     }
     else {
       if(priority == queuePriorityNormal_1) {
         pcbArray[processLocation].priority = queuePriorityNormal_2;
         Enqueue(id, QUEUE2);
+        return;
       }
       else if(priority == queuePriorityNormal_2) {
         pcbArray[processLocation].priority = queuePriorityNormal_3;
         Enqueue(id, QUEUE3);
+        return;
       }
       else if(priority == queuePriorityNormal_3) {
         pcbArray[processLocation].priority = queuePriorityNormal_3;
         Enqueue(id, QUEUE3);
+        return;
       }
       else {
         printf("Unhandled priority exception\n");
@@ -593,19 +602,6 @@ void interruptHandler(int SIG){
 //not the parent
 void cleanup() {
 
-  printf("******************REPORT*****************\n");
-  printf("*                                       *\n");
-  printf("*             CPU IDLE TIME:            *\n");
-  printf("*                  %llu                *\n", idleTime);
-  printf("*                                       *\n");
-  printf("*             AVG TURNAROUND:           *\n");
-  printf("*                  %llu                *\n", idleTime);
-  printf("*                                       *\n");
-  printf("*                AVG WAIT:              *\n");
-  printf("*                  %llu                *\n", idleTime);
-  printf("*                                       *\n");
-  printf("*****************************************\n");
-
   signal(SIGQUIT, SIG_IGN);
   myStruct->sigNotReceived = 0;
 
@@ -639,11 +635,27 @@ void cleanup() {
   if(fclose(file)) {
     perror("    Error closing file");
   }
+  printf("%sMaster about to terminate%s\n", RED, NRM);
 
+  printf("\n\n\n\n");
+  printf("%s%s******************REPORT*****************%s\n", RED, REPORT, NRM);
+  printf("%s%s*                                       *%s\n", RED, REPORT, NRM);
+  printf("%s%s*             CPU IDLE TIME:            *%s\n", RED, REPORT, NRM);
+  printf("%s%s*             %llu.%09llu               *%s\n", RED, REPORT, idleTime / NANO_MODIFIER, idleTime % NANO_MODIFIER, NRM);
+  printf("%s%s*                                       *%s\n", RED, REPORT, NRM);
+  printf("%s%s*            AVG TURNAROUND:            *%s\n", RED, REPORT, NRM);
+  printf("%s%s*             %llu.%09llu               *%s\n", RED, REPORT, idleTime / NANO_MODIFIER, idleTime % NANO_MODIFIER, NRM);
+  printf("%s%s*                                       *%s\n", RED, REPORT, NRM);
+  printf("%s%s*               AVG WAIT:               *%s\n", RED, REPORT, NRM);
+  printf("%s%s*             %llu.%09llu               *%s\n", RED, REPORT, idleTime / NANO_MODIFIER, idleTime % NANO_MODIFIER, NRM);
+  printf("%s%s*                                       *%s\n", RED, REPORT, NRM);
+  printf("%s%s*****************************************%s\n", RED, REPORT, NRM);
 
-  printf("%sMaster about to kill itself%s\n", RED, NRM);
+  printf("\n\n\n\n");
+ 
+  exit(1);
   //Kill this master process
-  kill(getpid(), SIGKILL);
+  //kill(getpid(), SIGKILL);
 }
 
 

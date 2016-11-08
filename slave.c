@@ -58,7 +58,7 @@ int main (int argc, char **argv) {
   }
 
   //Ignore SIGINT so that it can be handled below
-  signal(SIGINT, sigquitHandler);
+  signal(SIGINT, SIG_IGN);
 
   //Set the sigquitHandler for the SIGQUIT signal
   signal(SIGQUIT, sigquitHandler);
@@ -108,7 +108,7 @@ int main (int argc, char **argv) {
       pcbArray[processNumber].processID = 0;
     }
 
-    printf("    Slave %s%d%s:%s%d%s ran for quantum %s%llu out of %llu%s\n", BBU, myPid, NRM, RBU, processNumber, NRM, CYAN, duration, pcbArray[processNumber].priority, NRM);
+    printf("    Slave %s%d%s:%s%d%s ran for quantum %s%llu.%09llu out of %llu.%09llu%s\n", BBU, myPid, NRM, RBU, processNumber, NRM, CYAN, duration / NANO_MODIFIER, duration % NANO_MODIFIER, pcbArray[processNumber].priority / NANO_MODIFIER, pcbArray[processNumber].priority % NANO_MODIFIER, NRM);
 
     myStruct->ossTimer += duration;
     
@@ -116,7 +116,7 @@ int main (int argc, char **argv) {
 
     myStruct->scheduledProcess = -1;
 
-    printf("    Slave %s%d%s:%s%d%s has ran for a total of %s%llu out of %llu%s\n", BBU, myPid, NRM, RBU, processNumber, NRM, MBU, pcbArray[processNumber].totalTimeRan, pcbArray[processNumber].totalScheduledTime, NRM);
+    printf("    Slave %s%d%s:%s%d%s has ran for a total of %s%llu.%09llu out of %llu.%09llu%s\n", BBU, myPid, NRM, RBU, processNumber, NRM, MBU, pcbArray[processNumber].totalTimeRan / NANO_MODIFIER, pcbArray[processNumber].totalTimeRan % NANO_MODIFIER, pcbArray[processNumber].totalScheduledTime / NANO_MODIFIER, pcbArray[processNumber].totalScheduledTime % NANO_MODIFIER, NRM);
   
   } while (notFinished && myStruct->sigNotReceived);
 
