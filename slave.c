@@ -95,7 +95,7 @@ int main (int argc, char **argv) {
     else {
       duration = pcbArray[processNumber].priority;
     }
-    printf("    Slave %d:%d got duration %llu out of %llu\n", myPid, processNumber, duration, pcbArray[processNumber].priority);
+    printf("    Slave %s%d%s:%s%d%s got duration %s%llu out of %llu%s\n", BBU, myPid, NRM, RBU, processNumber, NRM, CYAN, duration, pcbArray[processNumber].priority, NRM);
 
     pcbArray[processNumber].lastBurst = duration;
     pcbArray[processNumber].totalTimeRan += duration;
@@ -114,7 +114,7 @@ int main (int argc, char **argv) {
     
     myStruct->scheduledProcess = -1;
 
-    printf("    Slave %d:%d has ran for a total of %llu out of %llu\n", myPid, processNumber, pcbArray[processNumber].totalTimeRan, pcbArray[processNumber].totalScheduledTime);
+    printf("    Slave %s%d%s:%s%d%s has ran for a total of %s%llu out of %llu%s\n", BBU, myPid, NRM, RBU, processNumber, NRM, MBU, pcbArray[processNumber].totalTimeRan, pcbArray[processNumber].totalScheduledTime, NRM);
   
   } while (notFinished && myStruct->sigNotReceived);
 
@@ -126,7 +126,7 @@ int main (int argc, char **argv) {
     perror("    Slave could not detach from shared memory array");
   }
 
-  printf("    Slave %d exiting\n", processNumber);
+  printf("    %sSlave%s %s%d%s%s exiting%s\n", RED, NRM, RBU, processNumber, NRM, RED, NRM);
   //exit(1);
   kill(myPid, SIGTERM);
   sleep(1);

@@ -168,21 +168,20 @@ int main (int argc, char **argv)
 
   if(!cleanupCalled) {
     cleanupCalled = 1;
-    printf("Master cleanup called from main\n");
     cleanup();
   }
   return 0;
 }
 
 bool isTimeToSpawn(void) {
-  printf("Checking time to spawn: future = %llu timer =  %llu\n", timeToSpawn, myStruct->ossTimer);
-  fprintf(file, "Checking time to spawn: future = %llu timer =  %llu\n", timeToSpawn, myStruct->ossTimer);
+  printf("%sChecking time to spawn: future = %llu timer = %llu%s\n", DIM, timeToSpawn, myStruct->ossTimer, NRM);
+  fprintf(file, "Checking time to spawn: future = %llu timer = %llu\n", timeToSpawn, myStruct->ossTimer);
   return myStruct->ossTimer >= timeToSpawn ? true : false;
 }
 
 void setTimeToSpawn(void) {
   timeToSpawn = myStruct->ossTimer + rand() % 20000;
-  printf("Will try to spawn slave at time %llu\n", timeToSpawn);
+  printf("Will try to spawn slave at time %s%llu%s\n", YLWBK, timeToSpawn, NRM);
   fprintf(file, "Will try to spawn slave at time %llu\n", timeToSpawn);
 }
 
@@ -200,13 +199,13 @@ void spawnSlave(void) {
     }
 
     if(processNumberBeingSpawned == -1) {
-      printf("pcb array is full. no process created.\n");
+      printf("%sPCB array is full. no process created.%s\n", REDBK, NRM);
       fprintf(file, "pcb array is full. no process created.\n");
     }
 
     if(processNumberBeingSpawned != -1) {
-      printf("About to spawn process #%d\n", processNumberBeingSpawned);
-      fprintf(file, "About to spawn process #%d\n", processNumberBeingSpawned);
+      printf("%sSpawning processes for location %s%d%s\n", GRNBK, RED, processNumberBeingSpawned, NRM);
+      fprintf(file, "Spawning process for location %d\n", processNumberBeingSpawned);
       //exit on bad fork
       if((childPid = fork()) < 0) {
         perror("Fork Failure");
@@ -218,8 +217,8 @@ void spawnSlave(void) {
         pcbArray[processNumberBeingSpawned].processID = getpid();
         pcbArray[processNumberBeingSpawned].priority = getProcessPriority();
         pcbArray[processNumberBeingSpawned].totalScheduledTime = scheduleProcessTime();
-        printf(" Process %d at location %d was scheduled for time %llu\n", getpid(), processNumberBeingSpawned, pcbArray[processNumberBeingSpawned].totalScheduledTime);
-        fprintf(file, " Process %d at location %d was scheduled for time %llu\n", getpid(), processNumberBeingSpawned, pcbArray[processNumberBeingSpawned].totalScheduledTime);
+        printf("Process %s%d%s at location %s%d%s was scheduled for time %s%llu%s\n", BBU, getpid(), NRM, RBU, processNumberBeingSpawned, NRM, YBU, pcbArray[processNumberBeingSpawned].totalScheduledTime, NRM);
+        fprintf(file, "Process %d at location %d was scheduled for time %llu\n", getpid(), processNumberBeingSpawned, pcbArray[processNumberBeingSpawned].totalScheduledTime);
         sprintf(mArg, "%d", shmid);
         sprintf(nArg, "%d", processNumberBeingSpawned);
         sprintf(pArg, "%d", pcbShmid);
@@ -267,7 +266,7 @@ int waitForTurn(void) {
   }
   else {
     int processNum = atoi(msg.mText);
-    printf("Message from %d:%d\n", pcbArray[processNum].processID, processNum);
+    printf("Message from %s%d%s:%s%d%s\n", BBU, pcbArray[processNum].processID, NRM, RBU, processNum, NRM);
     fprintf(file, "Message from %d:%d\n", pcbArray[processNum].processID, processNum);
     fprintf(file, "    Slave %d:%d got duration %llu out of %llu\n", pcbArray[processNum].processID, processNum, pcbArray[processNum].lastBurst, pcbArray[processNum].priority);
     fprintf(file, "    Slave %d:%d has ran for a total of %llu out of %llu\n", pcbArray[processNum].processID, processNum, pcbArray[processNum].totalTimeRan, pcbArray[processNum].totalScheduledTime);
@@ -315,7 +314,7 @@ void updateAfterProcessFinish(int processLocation) {
  
   }
   else {
-    printf("Process completed its time\n");
+    printf("%sProcess completed its time%s\n", GRN, NRM);
     fprintf(file, "Process completed its time\n");
     pcbArray[processLocation].totalScheduledTime = 0;
     pcbArray[processLocation].lastBurst = 0;
@@ -339,19 +338,6 @@ pid_t scheduleNextProcess(void) {
   }
   else return -1;
 }
-
-void sendMessage(int qid, int msgtype) {
-  struct msgbuf msg;
-
-  msg.mType = msgtype;
-  sprintf(msg.mText, "Master initiating slave queue\n");
-
-  if(msgsnd(qid, (void *) &msg, sizeof(msg.mText), IPC_NOWAIT) == -1) {
-    perror("Master msgsnd error");
-  }
-
-}
-
 
 //Set queue pointers to null
 void createQueues() {
@@ -387,10 +373,10 @@ bool isEmpty(int choice) {
 
 //Function to add a process id to a given queue
 void Enqueue(pid_t processId, int choice) {
-  printf("Enqueuing pid %d in queue %d\n", processId, choice);
   fprintf(file, "Enqueuing pid %d in queue %d\n", processId, choice);
   switch(choice) {
     case 0:
+      printf("Enqueuing pid %s%d%s in queue %s%d%s\n", BBU, processId, NRM, Q0, choice, NRM);
       if(rear0 == NULL) {
         rear0 = (struct queue*)malloc(1 * sizeof(struct queue));
         rear0->next = NULL;
@@ -408,6 +394,7 @@ void Enqueue(pid_t processId, int choice) {
       queue0size++;
       break;
     case 1:
+      printf("Enqueuing pid %s%d%s in queue %s%d%s\n", BBU, processId, NRM, Q1, choice, NRM);
       if(rear1 == NULL) {
         rear1 = (struct queue*)malloc(1 * sizeof(struct queue));
         rear1->next = NULL;
@@ -425,6 +412,7 @@ void Enqueue(pid_t processId, int choice) {
       queue1size++;
       break;
     case 2:
+      printf("Enqueuing pid %s%d%s in queue %s%d%s\n", BBU, processId, NRM, Q2, choice, NRM);
       if(rear2 == NULL) {
         rear2 = (struct queue*)malloc(1 * sizeof(struct queue));
         rear2->next = NULL;
@@ -442,6 +430,7 @@ void Enqueue(pid_t processId, int choice) {
       queue2size++;
       break;
     case 3:
+      printf("Enqueuing pid %s%d%s in queue %s%d%s\n", BBU, processId, NRM, Q3, choice, NRM);
       if(rear3 == NULL) {
         rear3 = (struct queue*)malloc(1 * sizeof(struct queue));
         rear3->next = NULL;
@@ -485,6 +474,7 @@ pid_t pop(int choice) {
           front0 = NULL;
           rear0 = NULL;
         }
+        printf("Got pid %s%d%s from queue %s%d%s\n", BBU, poppedID, NRM, Q0, choice, NRM);
         queue0size--;
       }
       break;
@@ -506,6 +496,7 @@ pid_t pop(int choice) {
           front1 = NULL;
           rear1 = NULL;
         }
+        printf("Got pid %s%d%s from queue %s%d%s\n", BBU, poppedID, NRM, Q1, choice, NRM);
         queue1size--;
       }
       break;
@@ -527,6 +518,7 @@ pid_t pop(int choice) {
           front2 = NULL;
           rear2 = NULL;
         }
+        printf("Got pid %s%d%s from queue %s%d%s\n", BBU, poppedID, NRM, Q2, choice, NRM);
         queue2size--;
       }
       break;
@@ -548,13 +540,13 @@ pid_t pop(int choice) {
           front3 = NULL;
           rear3 = NULL;
         }
+        printf("Got pid %s%d%s from queue %s%d%s\n", BBU, poppedID, NRM, Q3, choice, NRM);
         queue3size--;
       }
       break;
     default:
       printf("Not a valid queue choice\n");
   }
-  printf("Got pid %d from queue %d\n", poppedID, choice);
   fprintf(file, "Got pid %d from queue %d\n", poppedID, choice);
   return poppedID;
 }
@@ -576,7 +568,6 @@ void interruptHandler(int SIG){
 
   if(!cleanupCalled) {
     cleanupCalled = 1;
-    printf("Master cleanup called from interrupt\n");
     cleanup();
   }
 }
@@ -588,7 +579,7 @@ void cleanup() {
   signal(SIGQUIT, SIG_IGN);
   myStruct->sigNotReceived = 0;
 
-  printf("Master sending SIGQUIT\n");
+  printf("%sMaster sending SIGQUIT%s\n", RED, NRM);
   kill(-getpgrp(), SIGQUIT);
 
   //free up the malloc'd memory for the arguments
@@ -596,10 +587,10 @@ void cleanup() {
   free(nArg);
   free(pArg);
   free(tArg);
-  printf("Master waiting on all processes do die\n");
+  printf("%sMaster waiting on all processes do die%s\n", RED, NRM);
   childPid = wait(&status);
 
-  printf("Master about to detach from shared memory\n");
+  printf("%sMaster about to detach from shared memory%s\n", RED, NRM);
   //Detach and remove the shared memory after all child process have died
   if(detachAndRemoveTimer(shmid, myStruct) == -1) {
     perror("Failed to destroy shared memory segment");
@@ -611,7 +602,7 @@ void cleanup() {
 
   clearQueues();
 
-  printf("Master about to delete message queues\n");
+  printf("%sMaster about to delete message queues%s\n", RED, NRM);
   //Delete the message queues
   msgctl(slaveQueueId, IPC_RMID, NULL);
   msgctl(masterQueueId, IPC_RMID, NULL);
@@ -621,7 +612,7 @@ void cleanup() {
   }
 
 
-  printf("Master about to kill itself\n");
+  printf("%sMaster about to kill itself%s\n", RED, NRM);
   //Kill this master process
   kill(getpid(), SIGKILL);
 }
@@ -645,7 +636,7 @@ void clearQueues(void) {
 
 //Detach and remove function
 int detachAndRemoveTimer(int shmid, sharedStruct *shmaddr) {
-  printf("Master: Detach and Remove Shared Memory\n");
+  printf("%sMaster: Detach and Remove Shared Memory%s\n", RED, NRM);
   int error = 0;
   if(shmdt(shmaddr) == -1) {
     error = errno;
@@ -662,7 +653,7 @@ int detachAndRemoveTimer(int shmid, sharedStruct *shmaddr) {
 
 //Detach and remove function
 int detachAndRemoveArray(int shmid, PCB *shmaddr) {
-  printf("Master: Detach and Remove Shared Memory\n");
+  printf("%sMaster: Detach and Remove Shared Memory%s\n", RED, NRM);
   int error = 0;
   if(shmdt(shmaddr) == -1) {
     error = errno;
