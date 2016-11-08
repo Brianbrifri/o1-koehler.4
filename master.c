@@ -210,6 +210,7 @@ void spawnSlave(void) {
 
     if(processNumberBeingSpawned != -1) {
       printf("%sFound open PCB. Spawning process.%s\n", GRNBK, NRM);
+      totalProcessesSpawned = totalProcessesSpawned + 1;
       //exit on bad fork
       if((childPid = fork()) < 0) {
         perror("Fork Failure");
@@ -218,7 +219,7 @@ void spawnSlave(void) {
 
       //If good fork, continue to call exec with all the necessary args
       if(childPid == 0) {
-        totalProcessesSpawned++;
+        printf("Total processes spawned: %d\n", totalProcessesSpawned);
         pcbArray[processNumberBeingSpawned].priority = getProcessPriority();
         pcbArray[processNumberBeingSpawned].totalScheduledTime = scheduleProcessTime();
         pcbArray[processNumberBeingSpawned].createTime = myStruct->ossTimer;
@@ -286,10 +287,11 @@ int waitForTurn(void) {
   }
 }
 
-void updateAverageTurnaroundTime(long long start, long long end) {
-  long long temp = end - start;
-  totalProcessLifeTime += temp;
-  //turnaroundTime = (totalProcessLifeTime / (long long)totalProcessesSpawned);
+void updateAverageTurnaroundTime(int pcb) {
+
+  long long startToFinish = myStruct->ossTimer - pcbArray[pcb].createTime;
+  totalProcessLifeTime += startToFinish;
+  processWaitTime += startToFinish - pcbArray[pcb].totalScheduledTime;
 }
 
 void updateAfterProcessFinish(int processLocation) {
@@ -339,7 +341,7 @@ void updateAfterProcessFinish(int processLocation) {
   else {
     printf("%sProcess completed its time%s\n", GRN, NRM);
     fprintf(file, "Process completed its time\n");
-    updateAverageTurnaroundTime(pcbArray[processLocation].createTime, myStruct->ossTimer);
+    updateAverageTurnaroundTime(processLocation);
     pcbArray[processLocation].totalScheduledTime = 0;
     pcbArray[processLocation].lastBurst = 0;
     pcbArray[processLocation].totalTimeRan = 0;
@@ -644,10 +646,10 @@ void cleanup() {
   printf("%s%s*             %llu.%09llu               *%s\n", RED, REPORT, idleTime / NANO_MODIFIER, idleTime % NANO_MODIFIER, NRM);
   printf("%s%s*                                       *%s\n", RED, REPORT, NRM);
   printf("%s%s*            AVG TURNAROUND:            *%s\n", RED, REPORT, NRM);
-  printf("%s%s*             %llu.%09llu               *%s\n", RED, REPORT, idleTime / NANO_MODIFIER, idleTime % NANO_MODIFIER, NRM);
+  printf("%s%s*             %llu.%09llu               *%s\n", RED, REPORT, (totalProcessLifeTime / totalProcessesSpawned) / NANO_MODIFIER, (totalProcessLifeTime / totalProcessesSpawned) % NANO_MODIFIER, NRM);
   printf("%s%s*                                       *%s\n", RED, REPORT, NRM);
   printf("%s%s*               AVG WAIT:               *%s\n", RED, REPORT, NRM);
-  printf("%s%s*             %llu.%09llu               *%s\n", RED, REPORT, idleTime / NANO_MODIFIER, idleTime % NANO_MODIFIER, NRM);
+  printf("%s%s*             %llu.%09llu               *%s\n", RED, REPORT, (processWaitTime / totalProcessesSpawned) / NANO_MODIFIER, (processWaitTime / totalProcessesSpawned) % NANO_MODIFIER, NRM);
   printf("%s%s*                                       *%s\n", RED, REPORT, NRM);
   printf("%s%s*****************************************%s\n", RED, REPORT, NRM);
 
