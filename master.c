@@ -134,6 +134,7 @@ int main (int argc, char **argv)
     pcbArray[i].totalScheduledTime = 0;
     pcbArray[i].lastBurst = 0;
     pcbArray[i].totalTimeRan = 0;
+    pcbArray[i].createTime = 0;
   }
 
   //Open file and mark the beginning of the new log
@@ -151,6 +152,7 @@ int main (int argc, char **argv)
 
   fprintf(file,"***** BEGIN LOG *****\n");
 
+  int tempIncrement;
   do {
 
     if(isTimeToSpawn()) {
@@ -160,7 +162,10 @@ int main (int argc, char **argv)
 
     myStruct->scheduledProcess = scheduleNextProcess();
 
-    myStruct->ossTimer += incrementTimer();
+    tempIncrement = incrementTimer();
+    idleTime += tempIncrement;
+    myStruct->ossTimer += tempIncrement;
+    printf("until %s%llu%s\n", TIMER, myStruct->ossTimer, NRM);
 
     updateAfterProcessFinish(waitForTurn());
   
@@ -199,13 +204,12 @@ void spawnSlave(void) {
     }
 
     if(processNumberBeingSpawned == -1) {
-      printf("%sPCB array is full. no process created.%s\n", REDBK, NRM);
-      fprintf(file, "pcb array is full. no process created.\n");
+      printf("%sPCB array is full. No process created.%s\n", REDBK, NRM);
+      fprintf(file, "PCB array is full. No process created.\n");
     }
 
     if(processNumberBeingSpawned != -1) {
-      printf("%sSpawning processes for location %s%d%s\n", GRNBK, RED, processNumberBeingSpawned, NRM);
-      fprintf(file, "Spawning process for location %d\n", processNumberBeingSpawned);
+      printf("%sFound open PCB. Spawning process.%s\n", GRNBK, NRM);
       //exit on bad fork
       if((childPid = fork()) < 0) {
         perror("Fork Failure");
@@ -214,11 +218,13 @@ void spawnSlave(void) {
 
       //If good fork, continue to call exec with all the necessary args
       if(childPid == 0) {
+        totalProcessesSpawned++;
         pcbArray[processNumberBeingSpawned].processID = getpid();
         pcbArray[processNumberBeingSpawned].priority = getProcessPriority();
         pcbArray[processNumberBeingSpawned].totalScheduledTime = scheduleProcessTime();
-        printf("Process %s%d%s at location %s%d%s was scheduled for time %s%llu%s\n", BBU, getpid(), NRM, RBU, processNumberBeingSpawned, NRM, YBU, pcbArray[processNumberBeingSpawned].totalScheduledTime, NRM);
-        fprintf(file, "Process %d at location %d was scheduled for time %llu\n", getpid(), processNumberBeingSpawned, pcbArray[processNumberBeingSpawned].totalScheduledTime);
+        pcbArray[processNumberBeingSpawned].createTime = myStruct->ossTimer;
+        printf("Process %s%d%s at location %s%d%s was scheduled for duration %s%llu%s at time %s%llu%s\n", BBU, getpid(), NRM, RBU, processNumberBeingSpawned, NRM, YBU, pcbArray[processNumberBeingSpawned].totalScheduledTime, NRM, TIMER, myStruct->ossTimer, NRM);
+        fprintf(file, "Process %d at location %d was scheduled for duration %llu\n", getpid(), processNumberBeingSpawned, pcbArray[processNumberBeingSpawned].totalScheduledTime);
         sprintf(mArg, "%d", shmid);
         sprintf(nArg, "%d", processNumberBeingSpawned);
         sprintf(pArg, "%d", pcbShmid);
@@ -239,7 +245,9 @@ void spawnSlave(void) {
 
 
 int incrementTimer(void) {
-  return rand() % 1001;
+  int random = rand() % 1001;
+  printf("Spent %s%d%s in master ", IDLE, random, NRM);
+  return random;
 }
 
 int scheduleProcessTime(void) {
@@ -266,12 +274,18 @@ int waitForTurn(void) {
   }
   else {
     int processNum = atoi(msg.mText);
-    printf("Message from %s%d%s:%s%d%s\n", BBU, pcbArray[processNum].processID, NRM, RBU, processNum, NRM);
-    fprintf(file, "Message from %d:%d\n", pcbArray[processNum].processID, processNum);
+    printf("Message from %s%d%s:%s%d%s at time %s%llu%s\n", BBU, pcbArray[processNum].processID, NRM, RBU, processNum, NRM, TIMER, myStruct->ossTimer, NRM);
+    fprintf(file, "Message from %d:%d at time %llu\n", pcbArray[processNum].processID, processNum, myStruct->ossTimer);
     fprintf(file, "    Slave %d:%d got duration %llu out of %llu\n", pcbArray[processNum].processID, processNum, pcbArray[processNum].lastBurst, pcbArray[processNum].priority);
     fprintf(file, "    Slave %d:%d has ran for a total of %llu out of %llu\n", pcbArray[processNum].processID, processNum, pcbArray[processNum].totalTimeRan, pcbArray[processNum].totalScheduledTime);
     return processNum;
   }
+}
+
+void updateAverageTurnaroundTime(long long start, long long end) {
+  long long temp = end - start;
+  totalProcessLifeTime += temp;
+  //turnaroundTime = (totalProcessLifeTime / (long long)totalProcessesSpawned);
 }
 
 void updateAfterProcessFinish(int processLocation) {
@@ -316,9 +330,11 @@ void updateAfterProcessFinish(int processLocation) {
   else {
     printf("%sProcess completed its time%s\n", GRN, NRM);
     fprintf(file, "Process completed its time\n");
+    updateAverageTurnaroundTime(pcbArray[processLocation].createTime, myStruct->ossTimer);
     pcbArray[processLocation].totalScheduledTime = 0;
     pcbArray[processLocation].lastBurst = 0;
     pcbArray[processLocation].totalTimeRan = 0;
+    pcbArray[processLocation].createTime = 0;
   }
 
 }
@@ -576,6 +592,20 @@ void interruptHandler(int SIG){
 //kill calls SIGQUIT on the groupid to kill the children but
 //not the parent
 void cleanup() {
+
+  printf("******************REPORT*****************\n");
+  printf("*                                       *\n");
+  printf("*             CPU IDLE TIME:            *\n");
+  printf("*                  %llu                *\n", idleTime);
+  printf("*                                       *\n");
+  printf("*             AVG TURNAROUND:           *\n");
+  printf("*                  %llu                *\n", idleTime);
+  printf("*                                       *\n");
+  printf("*                AVG WAIT:              *\n");
+  printf("*                  %llu                *\n", idleTime);
+  printf("*                                       *\n");
+  printf("*****************************************\n");
+
   signal(SIGQUIT, SIG_IGN);
   myStruct->sigNotReceived = 0;
 
@@ -590,7 +620,6 @@ void cleanup() {
   printf("%sMaster waiting on all processes do die%s\n", RED, NRM);
   childPid = wait(&status);
 
-  printf("%sMaster about to detach from shared memory%s\n", RED, NRM);
   //Detach and remove the shared memory after all child process have died
   if(detachAndRemoveTimer(shmid, myStruct) == -1) {
     perror("Failed to destroy shared memory segment");

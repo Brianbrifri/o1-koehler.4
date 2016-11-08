@@ -95,13 +95,11 @@ int main (int argc, char **argv) {
     else {
       duration = pcbArray[processNumber].priority;
     }
-    printf("    Slave %s%d%s:%s%d%s got duration %s%llu out of %llu%s\n", BBU, myPid, NRM, RBU, processNumber, NRM, CYAN, duration, pcbArray[processNumber].priority, NRM);
 
     pcbArray[processNumber].lastBurst = duration;
     pcbArray[processNumber].totalTimeRan += duration;
 
 
-    sendMessage(masterQueueId, 3);
 
     if(pcbArray[processNumber].totalTimeRan >= pcbArray[processNumber].totalScheduledTime) {
       duration -= (pcbArray[processNumber].totalTimeRan - pcbArray[processNumber].totalScheduledTime);
@@ -110,8 +108,12 @@ int main (int argc, char **argv) {
       pcbArray[processNumber].processID = 0;
     }
 
+    printf("    Slave %s%d%s:%s%d%s ran for quantum %s%llu out of %llu%s\n", BBU, myPid, NRM, RBU, processNumber, NRM, CYAN, duration, pcbArray[processNumber].priority, NRM);
+
     myStruct->ossTimer += duration;
     
+    sendMessage(masterQueueId, 3);
+
     myStruct->scheduledProcess = -1;
 
     printf("    Slave %s%d%s:%s%d%s has ran for a total of %s%llu out of %llu%s\n", BBU, myPid, NRM, RBU, processNumber, NRM, MBU, pcbArray[processNumber].totalTimeRan, pcbArray[processNumber].totalScheduledTime, NRM);
@@ -176,7 +178,7 @@ void getMessage(int qid, int msgtype) {
 //This handles SIGQUIT being sent from parent process
 //It sets the volatile int to 0 so that it will not enter in the CS.
 void sigquitHandler(int sig) {
-  printf("    Slave %d has received signal %s (%d)\n", processNumber, strsignal(sig), sig);
+  printf("    Slave %s%d%s has received signal %s (%d)\n", RBU, processNumber, NRM, strsignal(sig), sig);
   sigNotReceived = 0;
 
   if(shmdt(myStruct) == -1) {

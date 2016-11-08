@@ -24,6 +24,7 @@ void setTimeToSpawn(void);
 int incrementTimer(void);
 long long getProcessPriority(void);
 int scheduleProcessTime(void);
+void updateAverageTurnaroundTime(long long, long long);
 pid_t scheduleNextProcess(void);
 int waitForTurn(void);
 void updateAfterProcessFinish(int);
@@ -96,6 +97,10 @@ int masterQueueId;
 int nextProcessToSend = 1;
 int processNumberBeingSpawned = -1;
 long long timeToSpawn = 0;
+long long idleTime = 0;
+long long turnaroundTime = 0;
+long long totalProcessLifeTime = 0;
+long long totalProcessesSpawned = 0;
 int messageReceived = 0;
 //long long *ossTimer = 0;
 

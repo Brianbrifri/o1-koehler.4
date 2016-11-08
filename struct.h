@@ -30,6 +30,8 @@
 #define Q1 "\x1b[38;5;216m"
 #define Q2 "\x1b[38;5;206m"
 #define Q3 "\x1b[38;5;166m"
+#define TIMER "\x1b[38;5;45m"
+#define IDLE "\x1b[38;5;100m"
 #define LTBLUDIM "\x1b[94;2m"
 static const long long NANO_MODIFIER = 1000000000;
 
@@ -50,6 +52,7 @@ typedef struct PCB {
   long long totalTimeRan;
   long long lastBurst;
   long long priority;
+  long long createTime;
 } PCB;
 
 #endif
